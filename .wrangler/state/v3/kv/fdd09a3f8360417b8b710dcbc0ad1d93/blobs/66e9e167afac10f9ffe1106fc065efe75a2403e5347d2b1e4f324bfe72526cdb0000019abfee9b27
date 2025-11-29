@@ -1,0 +1,1 @@
+{"id":"TEKA","roomNumber":10,"createdAt":1764156522871,"title":"테스트","gameMode":"time","players":[{"id":"player_1764156522868","name":"흡혈이","score":0,"joinedAt":1764156522871}],"maxPlayers":5,"acceptingPlayers":true,"gameStarted":false,"roundNumber":0,"scores":{"player_1764156522868":0},"lastSeen":{"player_1764156522868":1764156676903}}

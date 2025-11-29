@@ -1,11 +1,12 @@
 name = "chosung-game"
 compatibility_date = "2024-11-19"
 
+[build]
+command = ""
+
+# Pages에서 Durable Objects를 사용하려면 별도 Workers 스크립트를 바인딩해야 합니다
+# 먼저 wrangler-do.toml로 Workers를 배포한 후, 여기서 바인딩하세요
 [[durable_objects.bindings]]
 name = "GAME_STATE"
 class_name = "GameStateRoom"
-
-[[migrations]]
-tag = "v1-game-state"
-new_classes = ["GameStateRoom"]
-
+script_name = "chosung-do-worker-2024"  # wrangler-do.toml의 name과 일치해야 함
