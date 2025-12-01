@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>초성왕</title>
+    <!-- Force deploy: 2024-12-01-16-00 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Do+Hyeon&display=swap" rel="stylesheet">
@@ -3999,20 +4000,20 @@
                         return;
                     }
                     
-                    // 2. 자신의 턴이 아니고 "/" 없이 입력하면 무시 (정답 공개 방지)
-                    if (!isMyTurn && !word.startsWith('/')) {
-                        input.value = '';
-                        return;
-                    }
-                    
-                    // 3. 자신의 턴이 아닐 때 "/"로 시작하면 채팅
-                    if (!isMyTurn && word.startsWith('/')) {
-                        const chatMessage = word.substring(1).trim();
-                        if (chatMessage) {
-                            await sendChatMessageFromInput(chatMessage);
+                    // 2. 자신의 턴이 아닐 때: "/" 없이 입력하면 무시, "/"로 시작하면 채팅
+                    if (!isMyTurn) {
+                        if (word.startsWith('/')) {
+                            const chatMessage = word.substring(1).trim();
+                            if (chatMessage) {
+                                await sendChatMessageFromInput(chatMessage);
+                            }
+                            input.value = '';
+                            return;
+                        } else {
+                            // "/" 없이 입력하면 무시 (정답으로 처리하지 않음)
+                            input.value = '';
+                            return;
                         }
-                        input.value = '';
-                        return;
                     }
                 }
             }
@@ -5112,23 +5113,35 @@
 
         async function joinRoomWithName(roomId, playerName) {
             try {
-                // 🆕 탈락자/새 유저 구분: DO의 eliminatedPlayers 확인
-                let isEliminatedPlayer = false;
-                try {
+                // 🆕 탈락자 재입장 체크: 먼저 현재 방 상태 확인
+                let isEliminatedRejoin = false;
+                const previousPlayerId = localStorage.getItem(`lastPlayerId_${roomId}`);
+                
+                if (previousPlayerId) {
+                    // 이전 playerId로 탈락자 여부 확인
                     const currentRoomData = await fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/game-state?roomId=${roomId}`).then(r => r.json()).catch(() => null);
-                    if (currentRoomData && currentRoomData.eliminatedPlayers) {
-                        // 기존 플레이어 ID 확인 (임시로 생성된 ID로는 확인 불가하므로, 서버에서 확인)
-                        // 서버 handleJoinRoom에서 확인하도록 함
+                    if (currentRoomData?.eliminatedPlayers?.includes(previousPlayerId)) {
+                        isEliminatedRejoin = true;
                     }
-                } catch (e) {
-                    console.error('[join-room] eliminatedPlayers 확인 실패:', e);
                 }
                 
-                multiplayerState.playerId = 'player_' + Date.now();
+                // 🆕 localStorage 5분 제한 완전히 제거 (탈락자든 새 유저든 자유롭게 입장 가능)
+                
+                // 🆕 탈락자 재입장인 경우 이전 playerId 재사용, 아니면 새로 생성
+                if (isEliminatedRejoin && previousPlayerId) {
+                    multiplayerState.playerId = previousPlayerId;
+                } else {
+                    multiplayerState.playerId = 'player_' + Date.now();
+                    // 새 playerId 저장
+                    localStorage.setItem(`lastPlayerId_${roomId}`, multiplayerState.playerId);
+                }
+                
                 multiplayerState.playerName = playerName;
                 multiplayerState.roomId = roomId;
                 multiplayerState.isHost = false;
                 multiplayerState.isMultiplayer = true;
+                
+                // 🆕 worker.js에서 자동으로 탈락자 재입장 처리 (eliminatedPlayers 확인 후 player_rejoin 액션 전송)
                 const response = await fetch('https://steep-moon-7816.sucksuck1114.workers.dev/api/join-room', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -7124,7 +7137,7 @@
             // 🆕 탈락 여부 확인
             const isEliminated = roomData.eliminatedPlayers?.includes(multiplayerState.playerId) || false;
             
-            // 🆕 단어 입력창: 탈락자는 채팅 입력 가능, 생존자는 항상 활성화 (자신의 턴이 아니어도 "/"로 채팅 가능)
+            // 🆕 단어 입력창: 탈락자는 채팅 입력 가능, 생존자는 자신의 턴일 때만 단어 입력 가능
             const wordInput = document.getElementById('wordInput');
             if (wordInput) {
                 if (isMyTurn && !isEliminated) {
@@ -7347,6 +7360,12 @@
                             leftTime: Date.now()
                         };
                         localStorage.setItem(`leftRoom_${multiplayerState.roomId}`, JSON.stringify(leftRoomInfo));
+                        
+                        // 🆕 탈락자 재입장을 위한 playerId 저장
+                        const isEliminated = roomData.eliminatedPlayers?.includes(multiplayerState.playerId) || false;
+                        if (isEliminated) {
+                            localStorage.setItem(`lastPlayerId_${multiplayerState.roomId}`, multiplayerState.playerId);
+                        }
                     }
                     
                     await fetch('https://steep-moon-7816.sucksuck1114.workers.dev/api/leave-room', {
