@@ -914,7 +914,7 @@
         /* 멀티플레이 토스트 메시지 (PC용) */
         .mp-toast {
             position: fixed;
-            top: 50%;
+            top: 30%;
             left: 50%;
             transform: translate(-50%, -50%);
             background: linear-gradient(135deg, #fd79a8, #e84393);
@@ -3893,7 +3893,13 @@
         }
 
         function showToast(emoji, message, score) {
-            if (!gameState.isMobile) return; // PC에서는 토스트 안띄움
+            // 🆕 PC 체크 강화: isPC() 함수와 gameState.isMobile 모두 체크
+            if (!gameState.isMobile || isPC()) return; // PC에서는 절대 토스트 안띄움
+            // 🆕 턴제 모드에서는 showTurnModeToast 사용 (PC에서도 표시되어야 함)
+            if (document.body.classList.contains('turn-mode')) {
+                showTurnModeToast(emoji, message);
+                return;
+            }
             
             // 이전 토스트 제거
             const oldToast = document.querySelector('.toast-message');
@@ -4044,7 +4050,8 @@
 
             // 띄어쓰기 제거 후 길이 체크
             if (wordForGame.length < 2 || wordForGame.length > 6) {
-                if (gameState.isMobile) {
+                // 🆕 PC에서는 항상 updateEmoji 사용, 모바일에서만 showToast 사용
+                if (gameState.isMobile && !isPC()) {
                     showToast('😓', '2~6글자만 가능해요', 0);
                 } else {
                     updateEmoji('😓', '2~6글자만 가능해요', 0);
@@ -4056,7 +4063,8 @@
 
             const isValid = hasEnoughConsonants(wordChosung, currentChars);
             if (!isValid) {
-                if (gameState.isMobile) {
+                // 🆕 PC에서는 항상 updateEmoji 사용, 모바일에서만 showToast 사용
+                if (gameState.isMobile && !isPC()) {
                     showToast('😓', '초성을 확인해주세요', 0);
                 } else {
                     updateEmoji('😓', '초성을 확인해주세요', 0);
@@ -4087,8 +4095,8 @@
                         // 중복 단어 처리: 단어 뜻 영역에 메시지 표시
                         updateDefinition('이미 나왔던 단어입니다');
                         
-                        // 토스트 메시지 (턴제 모드: PC에서도 표시)
-                        if (gameState.isMobile) {
+                        // 토스트 메시지 (턴제 모드: PC에서는 showTurnModeToast, 모바일에서만 showToast)
+                        if (gameState.isMobile && !isPC()) {
                             showToast('😓', '이미 나왔던 단어입니다', 0);
                         } else {
                             showTurnModeToast('😓', '이미 나왔던 단어입니다');
@@ -4153,9 +4161,9 @@
                             }
                         }
                         
-                        // 생명권 토스트는 기존 규칙 유지
+                        // 생명권 토스트는 기존 규칙 유지 (턴제 모드: PC에서는 showTurnModeToast, 모바일에서만 showToast)
                         if (livesEarned >= 1) {
-                            if (gameState.isMobile) {
+                            if (gameState.isMobile && !isPC()) {
                                 showToast('❤️', `생명권 ${livesEarned}개 획득`, 0);
                             } else {
                                 showTurnModeToast('❤️', `생명권 ${livesEarned}개 획득`);
@@ -4207,8 +4215,8 @@
                         // 오답 처리: 단어 뜻 영역에 메시지 표시
                         updateDefinition('사전에 없는 단어입니다');
                         
-                        // 토스트 메시지 (턴제 모드: PC에서도 표시)
-                        if (gameState.isMobile) {
+                        // 토스트 메시지 (턴제 모드: PC에서는 showTurnModeToast, 모바일에서만 showToast)
+                        if (gameState.isMobile && !isPC()) {
                             showToast('😓', '사전에 없는 단어입니다', 0);
                         } else {
                             showTurnModeToast('😓', '사전에 없는 단어입니다');
@@ -4265,7 +4273,8 @@
                         message = '기본이지!';
                     }
                     
-                    if (gameState.isMobile) {
+                    // 🆕 PC에서는 항상 updateEmoji 사용, 모바일에서만 showToast 사용
+                    if (gameState.isMobile && !isPC()) {
                         showToast(emoji, message, score.total);
                     } else {
                         updateEmoji(emoji, message, score.total);
@@ -4275,7 +4284,8 @@
                     input.value = '';
                     input.focus();
                 } else {
-                    if (gameState.isMobile) {
+                    // 🆕 PC에서는 항상 updateEmoji 사용, 모바일에서만 showToast 사용
+                    if (gameState.isMobile && !isPC()) {
                         showToast('😓', '올바른 단어가 아니에요', 0);
                     } else {
                         updateEmoji('😓', '올바른 단어가 아니에요', 0);
@@ -5265,12 +5275,24 @@
                 document.getElementById('gameScreen').classList.add('hidden');
                 document.getElementById('gameStartSection').classList.remove('hidden');
                 
+                // 🆕 입장 시 즉시 슬롯 표시 (폴링 시작 전에도)
+                updateScoreboard(roomData);
+                
                 startPolling();
                 updateStartScreenButtons();
                 // showToast('게임 시작을 기다리는 중...'); // 제거
                 
-                // 🆕 대기 중에도 슬롯 표시
-                updateScoreboard(roomData);
+                // 🆕 폴링 시작 후 즉시 한 번 더 슬롯 업데이트 (입장자 동기화 보장)
+                setTimeout(() => {
+                    if (multiplayerState.isMultiplayer && multiplayerState.roomId) {
+                        fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/game-state?roomId=${multiplayerState.roomId}&playerId=${encodeURIComponent(multiplayerState.playerId || '')}`, {
+                            cache: 'no-cache'
+                        })
+                        .then(r => r.json())
+                        .then(data => updateScoreboard(data))
+                        .catch(err => console.log('[입장] 슬롯 업데이트 실패 (무시):', err));
+                    }
+                }, 300);
             }
         }
 
@@ -5451,7 +5473,8 @@
             const input = document.getElementById('mpNameInput');
             const name = input.value.trim();
             if (!name) {
-                showToast('이름을 입력해주세요');
+                showToast('⚠️ 이름을 입력해주세요');
+                input.focus(); // 입력 필드에 포커스 유지
                 return;
             }
             
@@ -5500,12 +5523,13 @@
                 if (!multiplayerState.isMultiplayer || !multiplayerState.roomId) return;
                 
                 try {
-                    // 🆕 타임아웃 설정 (3초) - 네트워크 문제 시 빠른 복구
+                    // 🆕 타임아웃 설정 (5초로 증가) - 네트워크 지연 대응
                     const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 3000);
+                    const timeoutId = setTimeout(() => controller.abort(), 5000);
                     
                     const response = await fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/game-state?roomId=${multiplayerState.roomId}&playerId=${encodeURIComponent(multiplayerState.playerId || '')}`, {
-                        signal: controller.signal
+                        signal: controller.signal,
+                        cache: 'no-cache' // 🆕 캐시 방지로 최신 데이터 보장
                     });
                     
                     clearTimeout(timeoutId);
@@ -5647,12 +5671,10 @@
                         }
                         
                         multiplayerState.lastPlayerCount = currentCount;
-                        
-                    // 🆕 대기 중에도 슬롯 업데이트
-                    if (!gameState.gameRunning) {
-                        updateScoreboard(roomData);
                     }
-                }
+                    
+                    // 🆕 항상 슬롯 업데이트 (게임 실행 중이어도 플레이어 목록 동기화)
+                    updateScoreboard(roomData);
                 
                 // 🆕 턴제 모드: 턴 전환 감지 및 타이머 업데이트
                 if (roomData.gameMode === 'turn' && gameState.gameRunning) {
@@ -5936,19 +5958,20 @@
                         console.error('[폴링] 에러:', error);
                     }
                     
-                    // 🆕 연속 에러가 20회 이상이면 폴링 간격을 늘림 (500ms → 2초)
+                    // 🆕 연속 에러가 20회 이상이면 폴링 간격을 늘림 (500ms → 1.5초)
                     // 너무 자주 실패하면 서버 부하를 줄이기 위해
                     if (multiplayerState.pollingErrorCount >= 20 && multiplayerState.pollingErrorCount < 21) {
-                        console.warn('[폴링] 연속 에러 발생, 폴링 간격 조정 (500ms → 2초)');
+                        console.warn('[폴링] 연속 에러 발생, 폴링 간격 조정 (500ms → 1.5초)');
                         clearInterval(multiplayerState.pollingInterval);
-                        // 2초 간격으로 재시작
+                        // 1.5초 간격으로 재시작
                         multiplayerState.pollingInterval = setInterval(async () => {
                             if (!multiplayerState.isMultiplayer || !multiplayerState.roomId) return;
                             try {
                                 const controller = new AbortController();
-                                const timeoutId = setTimeout(() => controller.abort(), 3000);
-                                const retryResponse = await fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/game-state?roomId=${multiplayerState.roomId}`, {
-                                    signal: controller.signal
+                                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                                const retryResponse = await fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/game-state?roomId=${multiplayerState.roomId}&playerId=${encodeURIComponent(multiplayerState.playerId || '')}`, {
+                                    signal: controller.signal,
+                                    cache: 'no-cache'
                                 });
                                 clearTimeout(timeoutId);
                                 if (retryResponse.ok) {
@@ -5960,7 +5983,7 @@
                             } catch (retryError) {
                                 // 재시도 실패는 무시 (다음 주기에서 다시 시도)
                             }
-                        }, 2000);
+                        }, 1500);
                     }
                 }
             }, 500); // 🆕 1초→500ms로 단축해서 더 빠른 업데이트
@@ -6001,6 +6024,12 @@
         function updatePlayerSlots(roomData) {
             const isTurnMode = multiplayerState.gameMode === 'turn';
             
+            // 🆕 roomData.players가 없으면 빈 배열로 초기화
+            if (!roomData.players || !Array.isArray(roomData.players)) {
+                console.warn('[슬롯] roomData.players가 없거나 배열이 아님:', roomData);
+                roomData.players = [];
+            }
+            
             // 순위별로 정렬
             // roomData.scores가 없으면 빈 객체로 초기화
             const scores = roomData.scores || {};
@@ -6008,8 +6037,8 @@
             
             // 🆕 턴제 모드: 입장순으로 정렬 (시간제는 점수순)
             const sortedPlayers = isTurnMode 
-                ? [...(roomData.players || [])] // 입장순 유지
-                : roomData.players
+                ? [...roomData.players] // 입장순 유지
+                : roomData.players.length > 0 ? roomData.players
                     .map(player => {
                         const words = playerWords[player.id] || [];
                         const highestScore = words.length > 0 
@@ -6023,7 +6052,8 @@
                             highestScore: highestScore
                         };
                     })
-                    .sort((a, b) => b.score - a.score);
+                    .sort((a, b) => b.score - a.score)
+                : []; // 🆕 players가 없으면 빈 배열
 
             const slotsContainer = document.getElementById('playerSlotsLeft');
             
