@@ -1,5 +1,4 @@
-// KV 전용 Worker (Durable Objects 제거)
-
+// game-state-do.js 내용을 직접 포함 (Dashboard Quick edit용)
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
@@ -179,11 +178,8 @@ async function handleRooms(env) {
 }
 
 async function handleCreateRoom(request, env) {
-    try {
-        console.log('[create-room] 시작');
-        const { title, gameMode, playerId, playerName } = await request.json().catch(() => ({})); // 🆕 제목, 게임 모드, 방장 정보 받기
-        const now = Date.now();
-        console.log('[create-room] 파라미터:', { title, gameMode, playerId, playerName });
+    const { title, gameMode, playerId, playerName } = await request.json().catch(() => ({})); // 🆕 제목, 게임 모드, 방장 정보 받기
+    const now = Date.now();
 
     // 🆕 방번호: 사용되지 않는 가장 작은 번호 할당 (1,2,3,... 순차 부여, 중복 방지)
     let roomNumber = 1;
@@ -273,17 +269,7 @@ async function handleCreateRoom(request, env) {
             console.error('[create-room] recent rooms 업데이트 실패 (무시):', e);
         }
         
-        console.log('[create-room] 성공:', roomId);
         return jsonResponse({ roomId });
-    } catch (error) {
-        console.error('[create-room] 전체 에러:', error);
-        console.error('[create-room] 스택:', error.stack);
-        return jsonResponse({ 
-            error: 'Failed to create room',
-            message: error.message,
-            stack: error.stack
-        }, 500);
-    }
 }
 
 async function handleJoinRoom(request, env) {
@@ -483,7 +469,7 @@ async function handleGameState(request, env) {
         return jsonResponse({ error: 'roomId is required' }, 400);
     }
 
-    // GET 요청: KV에서 게임 상태 조회
+    // GET 요청: DO 상태와 KV의 players 정보를 병합
     if (request.method === 'GET') {
         // 먼저 KV에서 기본 방 정보 가져오기
         const roomData = await env.ROOM_LIST.get(roomId, 'json');
@@ -514,142 +500,177 @@ async function handleGameState(request, env) {
             }
         }
 
-        // KV 전용: 게임 상태 생성
-        const gameState = {
-            id: roomId,
-            createdAt: roomData.createdAt,
-            roomNumber: roomData.roomNumber || null,
-            title: roomData.title || '초성 배틀방',
-            gameMode: roomData.gameMode || 'time',
-            players: roomData.players || [],
-            maxPlayers: roomData.maxPlayers || 5,
-            acceptingPlayers: roomData.acceptingPlayers !== false,
-            gameStarted: roomData.gameStarted || false,
-            startTime: roomData.startTime || null,
-            endTime: roomData.endTime || null,
-            timeLeft: roomData.timeLeft || 180,
-            consonants: roomData.consonants || [],
-            scores: roomData.scores || {},
-            playerWords: roomData.playerWords || {},
-            roundNumber: roomData.roundNumber || 0,
-            lastUpdate: roomData.lastUpdate || null,
-            chatMessages: roomData.chatMessages || [],
-            // 턴제 모드
-            currentTurnPlayerId: roomData.currentTurnPlayerId || null,
-            turnStartTime: roomData.turnStartTime || null,
-            playerLives: roomData.playerLives || {},
-            eliminatedPlayers: roomData.eliminatedPlayers || [],
-            usedWords: (roomData.usedWords || []).slice(-100), // 최근 100개만
-            turnCount: roomData.turnCount || {},
-            isFirstTurn: roomData.isFirstTurn !== undefined ? roomData.isFirstTurn : true
-        };
+        let doState = null;
         
-        console.log(`[game-state] GET ${roomId}: players=${gameState.players.length}, gameStarted=${gameState.gameStarted}`);
-        
-        return jsonResponse(gameState);
-    }
-    
-    // POST 요청: KV에 게임 상태 업데이트
-    if (request.method === 'POST') {
-        const updateBody = await request.json();
-        const roomData = await env.ROOM_LIST.get(roomId, 'json');
-        
-        if (!roomData) {
-            return jsonResponse({ error: 'Room not found' }, 404);
-        }
-        
-        const now = Date.now();
-        
-        // 게임 시작
-        if (updateBody.action === 'start_game') {
-            roomData.gameStarted = true;
-            roomData.startTime = now;
-            roomData.timeLeft = 180;
-            roomData.consonants = updateBody.consonants || [];
-            roomData.roundNumber = (roomData.roundNumber || 0) + 1;
-            roomData.endTime = null;
-            
-            console.log(`[game-state] 게임 시작: ${roomId}, 초성: ${roomData.consonants.length}개`);
-        }
-        
-        // 새 게임
-        else if (updateBody.action === 'new_game') {
-            roomData.gameStarted = true;
-            roomData.startTime = now;
-            roomData.timeLeft = 180;
-            roomData.consonants = updateBody.consonants || [];
-            roomData.scores = {};
-            roomData.playerWords = {};
-            roomData.roundNumber = (roomData.roundNumber || 0) + 1;
-            roomData.endTime = null;
-            roomData.chatMessages = roomData.chatMessages || []; // 채팅은 유지
-            
-            console.log(`[game-state] 새 게임: ${roomId}`);
-        }
-        
-        // 게임 종료
-        else if (updateBody.action === 'end_game') {
-            roomData.gameStarted = false;
-            roomData.endTime = now;
-            
-            console.log(`[game-state] 게임 종료: ${roomId}`);
-        }
-        
-        // 점수 업데이트
-        else if (updateBody.playerId && updateBody.score !== undefined) {
-            if (!roomData.scores) roomData.scores = {};
-            if (!roomData.playerWords) roomData.playerWords = {};
-            
-            roomData.scores[updateBody.playerId] = updateBody.score;
-            roomData.playerWords[updateBody.playerId] = updateBody.words || [];
-            roomData.lastUpdate = now;
-            
-            console.log(`[game-state] 점수 업데이트: ${updateBody.playerId} = ${updateBody.score}점`);
-        }
-        
-        // 채팅 메시지
-        else if (updateBody.chatMessage && updateBody.playerName) {
-            if (!roomData.chatMessages) roomData.chatMessages = [];
-            
-            roomData.chatMessages.push({
-                playerId: updateBody.playerId,
-                playerName: updateBody.playerName,
-                message: updateBody.chatMessage,
-                timestamp: now
-            });
-            
-            // 최대 100개 메시지만 유지
-            if (roomData.chatMessages.length > 100) {
-                roomData.chatMessages = roomData.chatMessages.slice(-100);
+        // DO 바인딩이 있으면 DO에서 게임 상태 가져오기
+        if (env.GAME_STATE) {
+            try {
+                const id = env.GAME_STATE.idFromName(roomId);
+                const stub = env.GAME_STATE.get(id);
+                const doResponse = await stub.fetch(request);
+                
+                if (doResponse.ok) {
+                    doState = await doResponse.json();
+                }
+            } catch (error) {
+                console.error(`[game-state] DO 에러 (무시하고 KV 데이터 사용):`, error);
             }
-            
-            console.log(`[game-state] 채팅: ${updateBody.playerName}: ${updateBody.chatMessage}`);
         }
         
-        // KV 저장
-        await env.ROOM_LIST.put(roomId, JSON.stringify(roomData), {
-            metadata: {
+        // DO 상태가 없으면 KV 데이터를 기반으로 기본 상태 생성
+        if (!doState) {
+            doState = {
                 id: roomId,
-                roomNumber: roomData.roomNumber || 0,
                 createdAt: roomData.createdAt,
-                playerCount: roomData.players?.length || 0,
+                roomNumber: roomData.roomNumber || null,
                 gameStarted: roomData.gameStarted || false,
+                startTime: null,
+                endTime: null,
+                timeLeft: 180,
+                consonants: [],
+                scores: roomData.scores || {},
+                playerWords: roomData.playerWords || {},
                 roundNumber: roomData.roundNumber || 0,
-                title: roomData.title || '초성 배틀방',
-                gameMode: roomData.gameMode || 'time'
-            }
-        });
+                lastUpdate: null,
+                chatMessages: [] // 채팅 메시지 초기화
+            };
+        }
         
-        return jsonResponse({ success: true, roomData });
+        // KV의 players 정보와 기타 메타데이터 병합
+        doState.players = roomData.players || [];
+        doState.maxPlayers = roomData.maxPlayers || 5;
+        doState.acceptingPlayers = roomData.acceptingPlayers !== false;
+        doState.createdAt = roomData.createdAt;
+        doState.roomNumber = roomData.roomNumber || doState.roomNumber || null;
+        doState.title = roomData.title || '초성 배틀방'; // 🆕 제목 추가
+        doState.gameMode = roomData.gameMode || 'time'; // 🆕 게임 모드 추가
+        
+        // 🆕 턴제 모드 상태 병합
+        if (doState.gameMode === 'turn') {
+            doState.currentTurnPlayerId = doState.currentTurnPlayerId || null;
+            doState.turnStartTime = doState.turnStartTime || null;
+            doState.playerLives = doState.playerLives || {};
+            doState.eliminatedPlayers = doState.eliminatedPlayers || [];
+            // 🆕 usedWords는 서버에서 전체 유지하되, 클라이언트로는 최근 100개만 전송 (메모리 절약)
+            // 서버에서는 중복 체크를 위해 전체를 유지하지만 (30000개든 상관없이), 클라이언트는 화면 표시용이므로 최근 100개만 필요
+            if (doState.usedWords && Array.isArray(doState.usedWords)) {
+                doState.usedWords = doState.usedWords.slice(-100); // 최근 100개만 전송
+            } else {
+                doState.usedWords = [];
+            }
+            doState.turnCount = doState.turnCount || {};
+            doState.isFirstTurn = doState.isFirstTurn !== undefined ? doState.isFirstTurn : true;
+        } else {
+            // ✅ 시간제 모드: playerWords에서 usedWords 생성 (효과음 트리거용)
+            doState.usedWords = [];
+            if (doState.playerWords) {
+                for (const playerId in doState.playerWords) {
+                    const words = doState.playerWords[playerId];
+                    if (Array.isArray(words)) {
+                        for (const wordObj of words) {
+                            if (wordObj && wordObj.word) {
+                                doState.usedWords.push(wordObj.word);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // DO 상태가 있으면 DO를 우선, 없으면 KV 사용
+        // DO의 scores와 KV의 scores를 병합 (DO가 우선, 없으면 KV 사용)
+        if (!doState.scores || Object.keys(doState.scores).length === 0) {
+            // DO에 scores가 없으면 KV의 scores 사용
+            if (roomData.scores) {
+                doState.scores = roomData.scores;
+            }
+        } else {
+            // DO에 scores가 있으면 DO를 우선하되, KV의 scores도 병합 (누락된 플레이어 점수 보완)
+            if (roomData.scores) {
+                doState.scores = { ...roomData.scores, ...doState.scores };
+            }
+        }
+        if (!doState.playerWords || Object.keys(doState.playerWords).length === 0) {
+            // DO에 playerWords가 없으면 KV의 playerWords 사용
+            if (roomData.playerWords) {
+                doState.playerWords = roomData.playerWords;
+            }
+        } else {
+            // DO에 playerWords가 있으면 DO를 우선하되, KV의 playerWords도 병합
+            if (roomData.playerWords) {
+                doState.playerWords = { ...roomData.playerWords, ...doState.playerWords };
+            }
+        }
+        
+        // chatMessages가 없으면 빈 배열로 초기화
+        if (!doState.chatMessages || !Array.isArray(doState.chatMessages)) {
+            doState.chatMessages = [];
+        }
+        
+        // players가 없으면 빈 배열로 설정 (에러 방지)
+        if (!doState.players || !Array.isArray(doState.players)) {
+            doState.players = [];
+        }
+        
+        // 디버깅 로그
+        console.log(`[game-state] GET ${roomId}: players=${doState.players.length}, gameStarted=${doState.gameStarted}, chatMessages=${doState.chatMessages.length}`);
+        
+        return jsonResponse(doState);
     }
     
-    // DELETE 요청: 방 삭제
-    if (request.method === 'DELETE') {
-        await env.ROOM_LIST.delete(roomId);
-        return jsonResponse({ success: true });
+    // POST/DELETE 요청: DO로 전달하고, 게임 액션이면 KV도 업데이트
+    if (!env.GAME_STATE) {
+        return jsonResponse({ error: 'Durable Object binding GAME_STATE missing' }, 500);
     }
     
-    return jsonResponse({ error: 'Method not allowed' }, 405);
+    // POST 요청 본문 확인 (clone해서 읽기)
+    let updateBody = null;
+    if (request.method === 'POST') {
+        const clonedRequest = request.clone();
+        updateBody = await clonedRequest.json();
+    }
+    
+    const id = env.GAME_STATE.idFromName(roomId);
+    const stub = env.GAME_STATE.get(id);
+    const doResponse = await stub.fetch(request);
+    
+    // 게임 액션이면 KV도 업데이트 (DO와 동기화)
+    if (request.method === 'POST' && updateBody && updateBody.action) {
+        try {
+            const roomData = await env.ROOM_LIST.get(roomId, 'json');
+            if (roomData) {
+                if (updateBody.action === 'new_game') {
+                    // new_game: scores와 playerWords 초기화
+                    roomData.gameStarted = true;
+                    roomData.roundNumber = (roomData.roundNumber || 0) + 1;
+                    roomData.scores = {};
+                    roomData.playerWords = {};
+                } else if (updateBody.action === 'start_game') {
+                    // start_game: 게임 시작
+                    roomData.gameStarted = true;
+                    roomData.roundNumber = (roomData.roundNumber || 0) + 1;
+                } else if (updateBody.action === 'end_game') {
+                    // end_game: 게임 종료
+                    roomData.gameStarted = false;
+                }
+                
+                // KV 업데이트
+                await env.ROOM_LIST.put(roomId, JSON.stringify(roomData), {
+                    metadata: {
+                        id: roomId,
+                        createdAt: roomData.createdAt,
+                        playerCount: roomData.players?.length || 0,
+                        gameStarted: roomData.gameStarted || false,
+                        roundNumber: roomData.roundNumber || 0
+                    }
+                });
+            }
+        } catch (error) {
+            console.error(`[game-state] KV 업데이트 실패 (무시):`, error);
+        }
+    }
+    
+    return doResponse;
 }
 
 async function handleChat(request, env) {
@@ -660,7 +681,13 @@ async function handleChat(request, env) {
         return jsonResponse({ error: 'roomId is required' }, 400);
     }
 
-    // POST: 채팅 메시지 추가 (handleGameState로 전달)
+    if (!env.GAME_STATE) {
+        return jsonResponse({ error: 'Durable Object binding GAME_STATE missing' }, 500);
+    }
+
+    const id = env.GAME_STATE.idFromName(roomId);
+    const stub = env.GAME_STATE.get(id);
+
     if (request.method === 'POST') {
         const { playerName, message } = await request.json();
         
@@ -668,8 +695,8 @@ async function handleChat(request, env) {
             return jsonResponse({ error: 'Missing playerName or message' }, 400);
         }
 
-        // game-state POST로 전달
-        const gameStateRequest = new Request(`${request.url.split('?')[0].replace('/chat', '/game-state')}?roomId=${roomId}`, {
+        // DO에 채팅 메시지 전달
+        const chatRequest = new Request(`http://dummy/game-state?roomId=${roomId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -679,26 +706,35 @@ async function handleChat(request, env) {
             })
         });
         
-        return handleGameState(gameStateRequest, env);
+        const response = await stub.fetch(chatRequest);
+        return response;
     }
 
-    // GET: 채팅 메시지 조회
     if (request.method === 'GET') {
-        const roomData = await env.ROOM_LIST.get(roomId, 'json');
-        if (!roomData) {
-            return jsonResponse([]);
-        }
-        return jsonResponse(roomData.chatMessages || []);
+        // 채팅 메시지 조회
+        const stateRequest = new Request(`http://dummy/game-state?roomId=${roomId}`, {
+            method: 'GET'
+        });
+        const stateResponse = await stub.fetch(stateRequest);
+        const state = await stateResponse.json();
+        
+        // chatMessages만 반환
+        return jsonResponse(state.chatMessages || []);
     }
 
     return jsonResponse({ error: 'Method not allowed' }, 405);
 }
 
+// ============================================
+// v11-FORCE-DEPLOY-2025-12-06-16:35
+// CORS 헤더 노출 + 성능 측정 개선 + KV 시간 표시
+// ============================================
 async function handleValidateWord(request, env) {
     const corsHeaders = {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Expose-Headers': 'X-Cache, X-Source, X-Response-Time, X-KV-Time',
         'Content-Type': 'application/json'
     };
 
@@ -709,21 +745,48 @@ async function handleValidateWord(request, env) {
     try {
         const { word } = await request.json();
         const trimmedWord = word.trim();
+        const cacheKey = `word:${trimmedWord}`;
         
-        // 🆕 KV 캐시 확인
-        if (env.WORD_CACHE) {
-            const cacheKey = `word:${trimmedWord}`;
-            const cached = await env.WORD_CACHE.get(cacheKey, 'json');
+        // KV 바인딩 찾기 (최적화: 직접 접근)
+        const kvBinding = env.WORD_CACHE_NEW;
+        
+        // 🚀 KV 바인딩에서 먼저 확인 (최적화: json만 시도)
+        if (kvBinding) {
+            const kvStartTime = performance.now();
             
-            if (cached) {
-                console.log(`[캐시 히트] ${trimmedWord}`);
-                return new Response(JSON.stringify(cached), { 
-                    status: 200, 
-                    headers: {
-                        ...corsHeaders,
-                        'X-Cache': 'HIT'
-                    }
-                });
+            try {
+                // 직접 json으로 읽기 (가장 빠름)
+                const kvData = await kvBinding.get(cacheKey, 'json');
+                const kvTime = performance.now() - kvStartTime;
+                
+                if (kvData && kvData.word && kvData.definition) {
+                    // 최소한의 데이터만 반환 (빠른 응답)
+                    const result = {
+                        valid: true,
+                        source: 'KV_DICTIONARY',
+                        word: kvData.word,
+                        definitions: [{
+                            definition: kvData.definition,
+                            pos: '',
+                            source: 'KV_DICTIONARY'
+                        }],
+                        length: kvData.word.length,
+                        _kvTime: Math.round(kvTime * 100) / 100 // KV 읽기 시간 (ms)
+                    };
+                    
+                    return new Response(JSON.stringify(result), { 
+                        status: 200, 
+                        headers: {
+                            ...corsHeaders,
+                            'X-Cache': 'HIT',
+                            'X-Source': 'KV_DICTIONARY',
+                            'X-Response-Time': `${Math.round(kvTime)}ms`,
+                            'X-KV-Time': `${Math.round(kvTime)}ms`
+                        }
+                    });
+                }
+            } catch (error) {
+                // KV 읽기 실패 시 조용히 API로 폴백
             }
         }
 
@@ -800,16 +863,18 @@ async function handleValidateWord(request, env) {
             };
         }
         
-        // 🆕 KV 캐시 저장 (30일 TTL)
-        if (env.WORD_CACHE) {
-            const cacheKey = `word:${trimmedWord}`;
+        // API 호출 결과를 KV에 저장 (30일 TTL) - 폴백용 캐시
+        if (kvBinding && result.valid) {
             try {
-                await env.WORD_CACHE.put(cacheKey, JSON.stringify(result), {
+                // API 결과를 KV 형식으로 저장 (나중에 빠르게 읽기 위해)
+                const kvValue = {
+                    word: trimmedWord,
+                    definition: result.definitions[0]?.definition || '✅ 사전 등재 단어'
+                };
+                await kvBinding.put(cacheKey, JSON.stringify(kvValue), {
                     expirationTtl: 30 * 24 * 60 * 60 // 30일
                 });
-                console.log(`[캐시 저장] ${trimmedWord}`);
             } catch (cacheError) {
-                console.error(`[캐시 저장 실패] ${trimmedWord}:`, cacheError);
                 // 캐시 저장 실패해도 결과는 반환
             }
         }
@@ -818,7 +883,9 @@ async function handleValidateWord(request, env) {
             status: 200, 
             headers: {
                 ...corsHeaders,
-                'X-Cache': 'MISS'
+                'X-Cache': 'MISS',
+                'X-Source': 'API',
+                'X-Response-Time': 'API_CALL'
             }
         });
 
@@ -849,10 +916,46 @@ function jsonResponse(payload, status = 200) {
 
 export default {
     async fetch(request, env, ctx) {
+        // 🚨 즉시 응답 - 이 코드가 실행되는지 확인
         const url = new URL(request.url);
+        const WORKER_CODE_VERSION = 'WORKER-v11-GITHUB-2025-12-06-16:40';
+        
+        // 모든 요청에 즉시 버전 헤더 추가
+        const baseHeaders = {
+            'X-Worker-Version': WORKER_CODE_VERSION,
+            'X-Worker-Executed': 'YES-v11',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type',
+        };
+        
+        if (url.pathname === '/test-worker') {
+            return new Response(JSON.stringify({
+                message: 'Worker 실행됨!',
+                version: WORKER_CODE_VERSION,
+                timestamp: new Date().toISOString(),
+                url: request.url,
+                envKeys: Object.keys(env || {}),
+                hasWordCacheNew: !!env.WORD_CACHE_NEW,
+                wordCacheNewType: typeof env.WORD_CACHE_NEW
+            }), {
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    ...baseHeaders
+                }
+            });
+        }
+        
+        // 🚨 Worker가 실행되는지 확인하기 위한 헤더 추가
+        const workerVersion = WORKER_CODE_VERSION;
 
         if (request.method === 'OPTIONS') {
-            return new Response(null, { headers: corsHeaders });
+            return new Response(null, { 
+                headers: {
+                    ...corsHeaders,
+                    'X-Worker-Version': workerVersion
+                }
+            });
         }
 
         if (url.pathname === '/api/rooms' && request.method === 'GET') {
@@ -875,6 +978,7 @@ export default {
             return handleGameState(request, env);
         }
 
+        // ✅ functions/api/validate-word.js를 삭제했으므로 이 Worker가 실행됨
         if (url.pathname === '/api/validate-word' && request.method === 'POST') {
             return handleValidateWord(request, env);
         }
@@ -883,12 +987,11 @@ export default {
             return handleChat(request, env);
         }
 
-        // API 전용 Worker - 정적 파일은 Vercel에서 서빙
-        // API 라우트가 아닌 경우 404 반환
-        return new Response('API only - Static files served by Vercel', { 
-            status: 404,
-            headers: { 'Content-Type': 'text/plain' }
-        });
+        // 정적 파일 서빙 (싱글플레이어 HTML, sound 파일 등)
+        if (env.ASSETS) {
+            return env.ASSETS.fetch(request);
+        }
+        // ASSETS가 없으면 404 반환
+        return new Response('Not Found', { status: 404 });
     }
 };
-
