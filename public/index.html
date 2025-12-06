@@ -5302,9 +5302,14 @@
             const resultModal = document.querySelector('.mp-result-modal');
             if (resultModal) {
                 resultModal.remove();
-                // 🆕 finished 소리 플래그 리셋 (게임 시작 시 소리 재생 방지)
-                gameState.finishedSoundPlaying = false;
-                console.log('[게임 참여] 종료 모달 제거, 소리 플래그 리셋');
+                // 🆕 finished 소리 플래그는 리셋하지 않음 (이전 게임 종료 소리가 완전히 끝날 때까지 대기)
+                // gameState.finishedSoundPlaying은 audio.onended에서만 리셋됨
+                console.log('[게임 참여] 종료 모달 제거');
+            }
+            
+            // 🆕 게임 시작 시 점수 메시지 초기화 (단어 입력해주세요 메시지 제거)
+            if (!gameState.isMobile || isPC()) {
+                updateEmoji('🤔', '단어를 입력해주세요', 0);
             }
             
             // 기존 타이머 정리
@@ -5569,8 +5574,7 @@
                         
                         // 결과 화면 닫기
                         document.querySelector('.mp-result-modal')?.remove();
-                        // 🆕 finished 소리 플래그 리셋 (게임 시작 시 소리 재생 방지)
-                        gameState.finishedSoundPlaying = false;
+                        // 🆕 finished 소리 플래그는 리셋하지 않음 (이전 게임 종료 소리가 완전히 끝날 때까지 대기)
                         
                         // 라운드 번호 및 점수 팝업 상태 업데이트
                         multiplayerState.currentRound = serverRound;
@@ -5939,9 +5943,8 @@
                         document.querySelector('.mp-result-modal')) {
                         // 게임이 시작되었는데 모달이 있으면 닫기 (방장이 새 게임 시작 시)
                         document.querySelector('.mp-result-modal')?.remove();
-                        // 🆕 finished 소리 플래그도 리셋 (게임 시작 시 소리 재생 방지)
-                        gameState.finishedSoundPlaying = false;
-                        console.log('[폴링] 게임 시작 감지 - 모달 제거, 소리 플래그 리셋');
+                        // 🆕 finished 소리 플래그는 리셋하지 않음 (이전 게임 종료 소리가 완전히 끝날 때까지 대기)
+                        console.log('[폴링] 게임 시작 감지 - 모달 제거');
                     }
                     
                 } catch (error) {
