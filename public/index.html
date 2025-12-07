@@ -1385,7 +1385,7 @@
             margin-top: 4px;
         }
         
-        /* 턴제 모드: 6초 카운트다운 타이머 */
+        /* 턴제 모드: 5초 카운트다운 타이머 */
         .turn-timer {
             font-size: 4em;
             font-weight: bold;
@@ -3563,7 +3563,7 @@
                 <button class="settings-btn hidden" onclick="openSettings()">⚙️</button>
             </div>
             
-            <!-- 턴제 모드: 6초 카운트다운 타이머 -->
+            <!-- 턴제 모드: 5초 카운트다운 타이머 -->
             <div id="turnModeTimer" class="turn-timer hidden">6</div>
 
             <!-- 시간제 모드: 안내 문구 (PC only) -->
@@ -5391,7 +5391,7 @@
             }
             
             if (multiplayerState.gameMode === 'turn') {
-                // 턴제 모드: 6초 카운트다운 타이머
+                // 턴제 모드: 5초 카운트다운 타이머
                 startTurnModeTimer(roomData);
                 
                 // 🆕 턴제 모드: 60초마다 초성 랜덤 재배열
@@ -7153,7 +7153,7 @@
             usedWordsEl.scrollTop = 0;
         }
         
-        // 🆕 턴제 모드: 6초 카운트다운 타이머 시작
+        // 🆕 턴제 모드: 5초 카운트다운 타이머 시작
         function startTurnModeTimer(roomData) {
             // 🆕 이전 타이머 완전히 정리
             if (gameState.turnTimer) {
@@ -7168,7 +7168,7 @@
             
             const isMyTurn = roomData.currentTurnPlayerId === multiplayerState.playerId;
             const isFirstTurn = roomData.isFirstTurn === true;
-            const turnTimeLimit = isFirstTurn ? 9 : 6; // 첫 턴 9초, 이후 6초
+            const turnTimeLimit = isFirstTurn ? 8 : 5; // 첫 턴 8초, 이후 5초 (화면에는 4-3-2-1-0으로 표시)
             
             // 🆕 탈락 여부 확인
             const isEliminated = roomData.eliminatedPlayers?.includes(multiplayerState.playerId) || false;
@@ -7215,11 +7215,8 @@
             // 턴 타이머 표시
             const turnTimerEl = document.getElementById('turnModeTimer');
             if (turnTimerEl) {
-                // 🆕 내부 시간은 6초 그대로지만, 화면에는 6 대신 5부터 보이게 처리
-                // 첫 턴(9초)은 그대로 9부터, 이후 턴(6초)은 5부터 시작
-                const initialDisplay = (!isFirstTurn && turnTimeLimit === 6)
-                    ? 5
-                    : turnTimeLimit;
+                // 첫 턴(8초)은 그대로 8부터, 이후 턴(5초)은 4부터 시작 (5를 4로 표시)
+                const initialDisplay = (!isFirstTurn && turnTimeLimit === 5) ? 4 : turnTimeLimit;
                 turnTimerEl.textContent = initialDisplay;
             }
             
@@ -7256,12 +7253,11 @@
                 
                 // 타이머 업데이트
                 if (turnTimerEl) {
-                    // 🆕 내부 시간은 6초 그대로 사용하되, 화면에는 6 대신 5부터 보이도록 처리
-                    // (사용자 체감: 5-4-3-2-1-0, 실제 시간: 6초 유지)
+                    // 내부 시간은 5초 사용하되, 화면에는 4-3-2-1-0 표시 (5를 4로 표시)
+                    // 첫 턴(8초)은 그대로 8-7-6-5-4-3-2-1-0, 이후 턴(5초)은 4-3-2-1-0
                     let displayValue = timeLeftDisplay;
-                    // 첫 턴(isFirstTurn) 말고, 이후 턴(6초 타이머)에서만 6을 5로 보이게 함
-                    if (!isFirstTurn && displayValue === 6) {
-                        displayValue = 5;
+                    if (!isFirstTurn && displayValue === 5) {
+                        displayValue = 4; // 5초를 4로 표시 (4-3-2-1-0 = 실제 5초)
                     }
                     turnTimerEl.textContent = displayValue;
                 }
