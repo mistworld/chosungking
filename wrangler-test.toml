@@ -1,0 +1,14 @@
+name = "chosung-game-v2"
+main = "test-worker.js"
+type = "module"
+compatibility_date = "2024-12-16"
+workers_dev = true
+
+[build]
+command = ""
+
+[assets]
+directory = "./public"
+
+
+

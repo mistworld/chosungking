@@ -1,0 +1,37 @@
+# 새 API Worker URL
+
+## ✅ 새 Worker 이름으로 배포 완료
+Worker 이름: `chosung-api-new`
+
+## 🔗 API URL
+https://chosung-api-new.sucksuck1114.workers.dev
+
+## 📋 API 엔드포인트
+
+### 1. 방 목록 조회
+GET https://chosung-api-new.sucksuck1114.workers.dev/api/rooms
+
+### 2. 방 생성
+POST https://chosung-api-new.sucksuck1114.workers.dev/api/create-room
+
+### 3. 게임 상태 조회
+GET https://chosung-api-new.sucksuck1114.workers.dev/api/game-state?roomId={roomId}
+
+### 4. 방 참가
+POST https://chosung-api-new.sucksuck1114.workers.dev/api/join-room
+
+### 5. 단어 검증
+POST https://chosung-api-new.sucksuck1114.workers.dev/api/validate-word
+
+### 6. 채팅
+GET/POST https://chosung-api-new.sucksuck1114.workers.dev/api/chat?roomId={roomId}
+
+## ✅ 테스트
+위 URL들을 브라우저에서 열어서 JSON 응답이 나오는지 확인하세요!
+
+## 📝 Vercel index.html 변경
+모든 `/api/`를 다음으로 변경:
+`https://chosung-api-new.sucksuck1114.workers.dev/api/`
+
+
+

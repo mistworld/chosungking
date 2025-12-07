@@ -1,0 +1,5 @@
+functions/
+functions_backup/
+*.md
+public_backup/
+node_modules/

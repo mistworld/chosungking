@@ -1,0 +1,15 @@
+type = "module"
+name = "chosung-do-worker-2024"
+main = "src/game-state-do.js"
+compatibility_date = "2024-11-19"
+
+[build]
+command = ""
+
+[[durable_objects.bindings]]
+name = "GAME_STATE"
+class_name = "GameStateRoom"
+
+[[migrations]]
+tag = "v4-new-worker-2024"
+new_classes = ["GameStateRoom"]

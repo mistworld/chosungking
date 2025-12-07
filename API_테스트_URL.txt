@@ -1,0 +1,20 @@
+# Worker API 테스트 URL
+
+## 예상 Worker URL
+https://chosung-api-only.sucksuck1114.workers.dev
+
+## API 엔드포인트 테스트
+
+1. 방 목록 조회
+   https://chosung-api-only.sucksuck1114.workers.dev/api/rooms
+
+2. 방 생성 (POST)
+   https://chosung-api-only.sucksuck1114.workers.dev/api/create-room
+
+3. 게임 상태 조회
+   https://chosung-api-only.sucksuck1114.workers.dev/api/game-state?roomId=test
+
+브라우저에서 위 URL들을 열어서 JSON 응답이 나오는지 확인하세요!
+
+
+
