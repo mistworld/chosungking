@@ -7015,7 +7015,8 @@
             
             const isMyTurn = roomData.currentTurnPlayerId === multiplayerState.playerId;
             const isFirstTurn = roomData.isFirstTurn === true;
-            const turnTimeLimit = isFirstTurn ? 9 : 6; // 첫 턴 9초, 이후 6초 (화면에는 1씩 빼서 표시: 9→8, 6→5)
+            const turnTimeLimit = isFirstTurn ? 8 : 5; // 첫 턴 8초, 이후 5초 (화면에는 1씩 빼서 표시: 8→7, 5→4)
+            console.log('[턴제 타이머 v2] 5초 버전 (화면: 4-3-2-1-0) - 배포 확인용', new Date().toISOString());
             
             // 자신의 턴일 때 단어 입력창 테두리 깜빡임 및 입력 비활성화
             const wordInput = document.getElementById('wordInput');
