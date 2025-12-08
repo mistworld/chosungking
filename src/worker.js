@@ -1137,6 +1137,17 @@ async function handleValidateWord(request, env) {
             });
             clearTimeout(timeoutId);
             xmlText = await response.text();
+        } catch (fetchError) {
+            // API 호출 실패 시 오류 반환
+            return new Response(JSON.stringify({
+                valid: false,
+                error: '사전 검색 중 오류',
+                message: fetchError.name === 'AbortError' ? '요청 시간 초과' : fetchError.message
+            }), { 
+                status: 500, 
+                headers: corsHeaders 
+            });
+        }
 
         // total 확인
         const totalMatch = xmlText.match(/<total>(\d+)<\/total>/);
