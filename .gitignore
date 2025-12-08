@@ -3,3 +3,5 @@ functions_backup/
 node_modules/
 *.log
 .wrangler/
+.vercel
+.env*.local
