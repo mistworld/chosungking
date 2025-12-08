@@ -382,14 +382,14 @@ export class GameStateRoom {
 
     // 🆕 턴제 모드: 다음 턴으로 전환
     async nextTurn(state, now, players = []) {
-        // 🆕 항상 state.players를 우선 사용 (없으면 전달받은 players 사용)
-        let playerList = state.players || [];
-        if (playerList.length === 0 && players.length > 0) {
-            // state.players가 없으면 전달받은 players 사용하고 저장
-            playerList = players;
+        // 🆕 players 배열이 전달되면 무조건 state.players 업데이트 (턴 순서 정확성 보장)
+        if (players.length > 0) {
             state.players = players;
-            console.log(`[턴제] nextTurn: state.players 없어서 전달받은 players 사용: ${players.map(p => p.id || p).join(', ')}`);
+            console.log(`[턴제] nextTurn: players 배열 업데이트: ${players.map(p => p.id || p).join(', ')}`);
         }
+        
+        // 🆕 state.players 우선 사용, 없으면 전달받은 players 사용
+        let playerList = state.players && state.players.length > 0 ? state.players : (players.length > 0 ? players : []);
         
         if (playerList.length === 0) {
             console.log('[턴제] nextTurn: players 배열이 비어있음 - 게임 종료');
@@ -398,46 +398,69 @@ export class GameStateRoom {
             return;
         }
         
-        console.log('[턴제] nextTurn 호출:', {
-            currentTurn: state.currentTurnPlayerId,
-            players: playerList.map(p => p.id),
-            eliminated: state.eliminatedPlayers
-        });
+        // 🆕 탈락자 제외한 활성 플레이어 계산 (Set 사용으로 성능 향상)
+        const eliminatedSet = new Set(state.eliminatedPlayers || []);
+        const activePlayers = playerList.filter(p => !eliminatedSet.has(p.id));
         
-        // 탈락하지 않은 플레이어만 필터링
-        const activePlayers = playerList.filter(p => !state.eliminatedPlayers.includes(p.id));
         if (activePlayers.length <= 1) {
-            // 1명만 남으면 게임 종료
             state.gameStarted = false;
             state.endTime = now;
             return;
         }
         
-        // 현재 턴 플레이어의 인덱스 찾기
+        console.log('[턴제] nextTurn 호출:', {
+            currentTurn: state.currentTurnPlayerId,
+            players: playerList.map(p => p.id),
+            activePlayers: activePlayers.map(p => p.id),
+            eliminated: state.eliminatedPlayers
+        });
+        
+        // 🆕 현재 턴 플레이어의 인덱스 찾기 (정확한 턴 순서 보장)
         const currentIndex = activePlayers.findIndex(p => p.id === state.currentTurnPlayerId);
+        
+        // 🆕 currentIndex가 -1이면 (현재 턴 플레이어가 activePlayers에 없으면) 첫 번째 플레이어로 설정
         if (currentIndex === -1) {
-            // 현재 턴 플레이어가 없으면 첫 번째 플레이어로 설정
+            console.log(`[턴제] currentTurnPlayerId(${state.currentTurnPlayerId})가 activePlayers에 없음. 첫 번째 플레이어로 설정`);
             state.currentTurnPlayerId = activePlayers[0].id;
             state.turnStartTime = now;
             state.isFirstTurn = true;
             return;
         }
         
+        // 🆕 다음 플레이어 계산 (순환 구조: 0->1->2->0->1->2...)
         const nextIndex = (currentIndex + 1) % activePlayers.length;
         const nextPlayer = activePlayers[nextIndex];
         
-        // 다음 턴으로 전환
-        state.currentTurnPlayerId = nextPlayer.id;
+        // 🆕 같은 플레이어가 연속으로 턴을 받지 않도록 강력한 검증
+        if (nextPlayer.id === state.currentTurnPlayerId) {
+            console.warn(`[턴제] 경고: 같은 플레이어(${nextPlayer.id})가 연속 턴을 받을 뻔함. 다음 플레이어로 강제 이동`);
+            // 다음 다음 플레이어로 이동 (activePlayers.length가 1보다 크므로 안전)
+            const nextNextIndex = (nextIndex + 1) % activePlayers.length;
+            const nextNextPlayer = activePlayers[nextNextIndex];
+            // 🆕 또 같은 플레이어인지 확인
+            if (nextNextPlayer.id === state.currentTurnPlayerId && activePlayers.length > 2) {
+                // 세 번째 플레이어로 이동
+                const thirdIndex = (nextNextIndex + 1) % activePlayers.length;
+                state.currentTurnPlayerId = activePlayers[thirdIndex].id;
+            } else {
+                state.currentTurnPlayerId = nextNextPlayer.id;
+            }
+        } else {
+            state.currentTurnPlayerId = nextPlayer.id;
+        }
+        
         state.turnStartTime = now;
         state.isFirstTurn = false; // 첫 턴이 아니면 5초 (화면: 4-3-2-1-0)
         
         // 다음 플레이어의 연장권/턴횟수 초기화 (없으면)
-        if (state.playerLives[nextPlayer.id] === undefined) {
-            state.playerLives[nextPlayer.id] = 0;
+        if (state.playerLives[state.currentTurnPlayerId] === undefined) {
+            state.playerLives[state.currentTurnPlayerId] = 0;
         }
-        if (state.turnCount[nextPlayer.id] === undefined) {
-            state.turnCount[nextPlayer.id] = 0;
+        if (state.turnCount[state.currentTurnPlayerId] === undefined) {
+            state.turnCount[state.currentTurnPlayerId] = 0;
         }
+        
+        console.log(`[턴제] 턴 전환: ${activePlayers[currentIndex]?.id} → ${state.currentTurnPlayerId} (인덱스: ${currentIndex} → ${nextIndex}, 활성 플레이어: ${activePlayers.length}명)`);
     }
 
     json(payload, status = 200) {
