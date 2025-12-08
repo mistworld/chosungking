@@ -299,9 +299,9 @@ export class GameStateRoom {
                     // 다음 턴으로 전환 (state.players만 사용)
                     await this.nextTurn(state, now, state.players || []);
                 } else {
-                    // 연장권이 남아있으면 다음 5초 시작 (화면: 4-3-2-1-0)
+                    // 연장권이 남아있으면 다음 6초 시작
                     state.turnStartTime = now;
-                    console.log(`[턴제] ${playerId} 연장권 사용. 다음 5초 시작 (화면: 4-3-2-1-0)`);
+                    console.log(`[턴제] ${playerId} 연장권 사용. 다음 6초 시작`);
                 }
             }
         }
@@ -450,7 +450,7 @@ export class GameStateRoom {
         }
         
         state.turnStartTime = now;
-        state.isFirstTurn = false; // 첫 턴이 아니면 5초 (화면: 4-3-2-1-0)
+        state.isFirstTurn = false; // 첫 턴이 아니면 6초
         
         // 다음 플레이어의 연장권/턴횟수 초기화 (없으면)
         if (state.playerLives[state.currentTurnPlayerId] === undefined) {
