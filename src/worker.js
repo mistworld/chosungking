@@ -1041,9 +1041,11 @@ async function handleChat(request, env) {
 // ============================================
 // v15 - handleValidateWord 함수 (최신 버전)
 // ============================================
+// ============================================
+// 빠른 버전 기반 (kv잔잔바리 버그들있음 폴더)
+// 최적화: 간단한 로직, 명시적 헤더 설정
+// ============================================
 async function handleValidateWord(request, env) {
-    const FILE_VERSION = '2025-12-06-WORKER-v15-FORCE-DEPLOY';
-    console.log('[handleValidateWord-v15] 실행됨', FILE_VERSION);
     const corsHeaders = {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -1061,17 +1063,21 @@ async function handleValidateWord(request, env) {
         const trimmedWord = word.trim();
         const cacheKey = `word:${trimmedWord}`;
         
+        // KV 바인딩 찾기 (최적화: 직접 접근)
         const kvBinding = env.WORD_CACHE_NEW;
         
+        // 🚀 KV 바인딩에서 먼저 확인
         if (kvBinding) {
             const kvStartTime = performance.now();
             
             try {
+                // 직접 json으로 읽기 (가장 빠름)
                 const kvData = await kvBinding.get(cacheKey, 'json');
                 const kvTime = performance.now() - kvStartTime;
                 
                 if (kvData && kvData.word && kvData.definition) {
                     const kvTimeRounded = Math.round(kvTime);
+                    // 최소한의 데이터만 반환 (빠른 응답)
                     const result = {
                         valid: true,
                         source: 'KV_DICTIONARY',
@@ -1082,10 +1088,10 @@ async function handleValidateWord(request, env) {
                             source: 'KV_DICTIONARY'
                         }],
                         length: kvData.word.length,
-                        _kvTime: Math.round(kvTime * 100) / 100,
-                        _fileVersion: FILE_VERSION
+                        _kvTime: Math.round(kvTime * 100) / 100 // KV 읽기 시간 (ms)
                     };
                     
+                    // 헤더 명시적으로 설정
                     const responseHeaders = new Headers(corsHeaders);
                     responseHeaders.set('X-Cache', 'HIT');
                     responseHeaders.set('X-Source', 'KV_DICTIONARY');
@@ -1102,6 +1108,7 @@ async function handleValidateWord(request, env) {
             }
         }
 
+        // API 호출
         const apiUrl = new URL('https://stdict.korean.go.kr/api/search.do');
         apiUrl.searchParams.append('key', 'C670DD254FE59C25E23DC785BA2AAAFE');
         apiUrl.searchParams.append('q', trimmedWord);
@@ -1110,6 +1117,7 @@ async function handleValidateWord(request, env) {
         const response = await fetch(apiUrl.toString());
         const xmlText = await response.text();
 
+        // total 확인
         const totalMatch = xmlText.match(/<total>(\d+)<\/total>/);
         const total = totalMatch ? parseInt(totalMatch[1]) : 0;
 
@@ -1121,17 +1129,20 @@ async function handleValidateWord(request, env) {
                 error: '사전에 없는 단어입니다.',
                 word: trimmedWord,
                 definitions: [],
-                length: trimmedWord.length,
-                _fileVersion: FILE_VERSION
+                length: trimmedWord.length
             };
         } else {
+            // ✅ 모든 XML 패턴 시도
             let definition = '';
             
+            // 패턴 1: <definition>내용</definition>
             let defMatch = xmlText.match(/<definition>([^<]+)<\/definition>/);
             if (!defMatch) {
+                // 패턴 2: <definition><![CDATA[내용]]></definition>
                 defMatch = xmlText.match(/<definition><!\[CDATA\[([^\]]+)\]\]><\/definition>/);
             }
             if (!defMatch) {
+                // 패턴 3: <definition>태그 포함 내용</definition>
                 defMatch = xmlText.match(/<definition>([\s\S]*?)<\/definition>/);
             }
 
@@ -1143,13 +1154,16 @@ async function handleValidateWord(request, env) {
                     .trim();
             }
 
+            // 품사 찾기
             const posMatch = xmlText.match(/<pos>([^<]+)<\/pos>/);
             const pos = posMatch ? posMatch[1].trim() : '';
 
+            // 뜻이 없으면
             if (!definition) {
                 definition = '✅ 사전 등재 단어';
             }
 
+            // 길이 제한
             if (definition.length > 80) {
                 definition = definition.substring(0, 77) + '...';
             }
@@ -1163,19 +1177,20 @@ async function handleValidateWord(request, env) {
                     pos: pos,
                     source: '표준국어대사전'
                 }],
-                length: trimmedWord.length,
-                _fileVersion: FILE_VERSION
+                length: trimmedWord.length
             };
         }
         
+        // API 호출 결과를 KV에 저장 (30일 TTL) - 폴백용 캐시
         if (kvBinding && result.valid) {
             try {
+                // API 결과를 KV 형식으로 저장 (나중에 빠르게 읽기 위해)
                 const kvValue = {
                     word: trimmedWord,
                     definition: result.definitions[0]?.definition || '✅ 사전 등재 단어'
                 };
                 await kvBinding.put(cacheKey, JSON.stringify(kvValue), {
-                    expirationTtl: 30 * 24 * 60 * 60
+                    expirationTtl: 30 * 24 * 60 * 60 // 30일
                 });
             } catch (cacheError) {
                 // 캐시 저장 실패해도 결과는 반환
@@ -1217,76 +1232,88 @@ function jsonResponse(payload, status = 200) {
   });
 }
 
+// ============================================
+// WORKER v14 - 빠른 버전 기반 (300ms 목표)
+// 배포 날짜: 2025-12-06 17:05 (에디터 수정으로 배포 시간 확인)
+// ============================================
 export default {
-  async fetch(request, env, ctx) {
-      const url = new URL(request.url);
-      const WORKER_CODE_VERSION = 'WORKER-v15-FORCE-DEPLOY-2025-12-06-17:30';
-      const FILE_VERSION = '2025-12-06-WORKER-v15-FORCE-DEPLOY';
-      
-      const baseHeaders = {
-          'X-Worker-Version': WORKER_CODE_VERSION,
-          'X-Worker-Executed': 'YES-v15',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
-      };
-      
-      if (url.pathname === '/test-worker') {
-          return new Response(JSON.stringify({
-              message: 'Worker 실행됨!',
-              version: WORKER_CODE_VERSION,
-              timestamp: new Date().toISOString(),
-              url: request.url,
-              envKeys: Object.keys(env || {}),
-              hasWordCacheNew: !!env.WORD_CACHE_NEW,
-              wordCacheNewType: typeof env.WORD_CACHE_NEW
-          }), {
-              headers: { 
-                  'Content-Type': 'application/json', 
-                  ...baseHeaders
-              }
-          });
-      }
-      
-      if (request.method === 'OPTIONS') {
-          return new Response(null, { 
-              headers: baseHeaders
-          });
-      }
+    async fetch(request, env, ctx) {
+        const url = new URL(request.url);
+        const WORKER_CODE_VERSION = 'WORKER-v15-OPTIMIZED-2025-12-06';
+        
+        // 모든 요청에 즉시 버전 헤더 추가
+        const baseHeaders = {
+            'X-Worker-Version': WORKER_CODE_VERSION,
+            'X-Worker-Executed': 'YES-v15',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type',
+        };
+        
+        if (url.pathname === '/test-worker') {
+            return new Response(JSON.stringify({
+                message: 'Worker 실행됨!',
+                version: WORKER_CODE_VERSION,
+                timestamp: new Date().toISOString(),
+                url: request.url,
+                envKeys: Object.keys(env || {}),
+                hasWordCacheNew: !!env.WORD_CACHE_NEW,
+                wordCacheNewType: typeof env.WORD_CACHE_NEW
+            }), {
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    ...baseHeaders
+                }
+            });
+        }
+        
+        // 🚨 Worker가 실행되는지 확인하기 위한 헤더 추가
+        const workerVersion = WORKER_CODE_VERSION;
 
-      if (url.pathname === '/api/rooms' && request.method === 'GET') {
-          return handleRooms(env);
-      }
+        if (request.method === 'OPTIONS') {
+            return new Response(null, { 
+                headers: {
+                    ...corsHeaders,
+                    'X-Worker-Version': workerVersion
+                }
+            });
+        }
 
-      if (url.pathname === '/api/create-room' && request.method === 'POST') {
-          return handleCreateRoom(request, env);
-      }
+        if (url.pathname === '/api/rooms' && request.method === 'GET') {
+            return handleRooms(env);
+        }
 
-      if (url.pathname === '/api/join-room' && request.method === 'POST') {
-          return handleJoinRoom(request, env);
-      }
+        if (url.pathname === '/api/create-room' && request.method === 'POST') {
+            return handleCreateRoom(request, env);
+        }
 
-      if (url.pathname === '/api/leave-room' && request.method === 'POST') {
-          return handleLeaveRoom(request, env);
-      }
+        if (url.pathname === '/api/join-room' && request.method === 'POST') {
+            return handleJoinRoom(request, env);
+        }
 
-      if (url.pathname === '/api/game-state') {
-          return handleGameState(request, env); 
-      }
+        if (url.pathname === '/api/leave-room' && request.method === 'POST') {
+            return handleLeaveRoom(request, env);
+        }
 
-      if (url.pathname === '/api/validate-word' && request.method === 'POST') {
-          return handleValidateWord(request, env);
-      }
+        if (url.pathname === '/api/game-state') {
+            return handleGameState(request, env);
+        }
 
-      if (url.pathname === '/api/chat') {
-          return handleChat(request, env);
-      }
+        // ✅ functions/api/validate-word.js를 삭제했으므로 이 Worker가 실행됨
+        if (url.pathname === '/api/validate-word' && request.method === 'POST') {
+            return handleValidateWord(request, env);
+        }
 
-      if (env.ASSETS) {
-          return env.ASSETS.fetch(request);
-      }
-      
-      return new Response('Not Found', { status: 404 });
-  }
+        if (url.pathname === '/api/chat') {
+            return handleChat(request, env);
+        }
+
+        // 정적 파일 서빙 (싱글플레이어 HTML, sound 파일 등)
+        if (env.ASSETS) {
+            return env.ASSETS.fetch(request);
+        }
+        // ASSETS가 없으면 404 반환
+        return new Response('Not Found', { status: 404 });
+    }
 };
 

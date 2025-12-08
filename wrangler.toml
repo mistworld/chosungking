@@ -1,17 +1,30 @@
 name = "steep-moon-7816"
 main = "src/worker.js"
-compatibility_date = "2024-12-16"
-workers_dev = true
-
-[build]
-command = ""
-
-# KV 전용 - Durable Objects 제거
+compatibility_date = "2024-12-02"
 
 [[kv_namespaces]]
 binding = "ROOM_LIST"
 id = "fdd09a3f8360417b8b710dcbc0ad1d93"
 
 [[kv_namespaces]]
-binding = "WORD_CACHE"
-id = "c2668ae36bf64d74b174663e61f91d53"
+binding = "WORD_CACHE_NEW"
+id = "2c001bb3f40c41df8e79974421a3268c"
+
+# ⚠️ WORD_CACHE는 더 이상 사용하지 않음 (WORD_CACHE_NEW 사용)
+# [[kv_namespaces]]
+# binding = "WORD_CACHE"
+# id = "c2668ae36bf64d74b174663e61f91d53"
+
+# assets는 public 디렉토리가 있을 때만 사용
+# [assets]
+# directory = "./public"
+
+[[durable_objects.bindings]]
+name = "GAME_STATE"
+class_name = "GameStateRoom"
+jurisdiction = "apac"
+
+# 마이그레이션 설정 (경고 해결)
+[[migrations]]
+tag = "v1"
+new_classes = ["GameStateRoom"]
