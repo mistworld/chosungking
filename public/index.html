@@ -5735,14 +5735,28 @@
                     
                     const roomData = await response.json();
                     
-                    // 🆕 타이머 동기화: 서버 시간 오프셋 계산
+                    // 🆕 타이머 동기화: 서버 시간 오프셋 계산 (더 정확하게)
                     if (roomData.serverNow !== undefined) {
                         const clientNow = Date.now();
-                        multiplayerState.serverTimeOffset = clientNow - roomData.serverNow;
-                        // 오프셋이 너무 크면 (5초 이상) 무시 (네트워크 지연으로 인한 오차)
-                        if (Math.abs(multiplayerState.serverTimeOffset) > 5000) {
-                            console.warn('[타이머 동기화] 오프셋이 너무 큼, 무시:', multiplayerState.serverTimeOffset, 'ms');
-                            multiplayerState.serverTimeOffset = 0;
+                        // 네트워크 지연을 고려한 오프셋 계산
+                        // 서버가 응답을 보낸 시간과 클라이언트가 받은 시간의 차이를 고려
+                        const calculatedOffset = clientNow - roomData.serverNow;
+                        
+                        // 오프셋이 너무 크면 (3초 이상) 무시 (네트워크 지연으로 인한 오차)
+                        if (Math.abs(calculatedOffset) > 3000) {
+                            console.warn('[타이머 동기화] 오프셋이 너무 큼, 무시:', calculatedOffset, 'ms');
+                            // 기존 오프셋 유지 또는 0으로 설정
+                            if (!multiplayerState.serverTimeOffset) {
+                                multiplayerState.serverTimeOffset = 0;
+                            }
+                        } else {
+                            // 🆕 이동 평균으로 오프셋 계산 (급격한 변화 방지)
+                            if (multiplayerState.serverTimeOffset === undefined) {
+                                multiplayerState.serverTimeOffset = calculatedOffset;
+                            } else {
+                                // 70% 기존 값 + 30% 새 값 (부드러운 변화)
+                                multiplayerState.serverTimeOffset = multiplayerState.serverTimeOffset * 0.7 + calculatedOffset * 0.3;
+                            }
                         }
                     }
                     
@@ -5941,11 +5955,23 @@
                                     livesEarned = 5;
                                 }
                                 
-                                // 효과음 재생
-                                if (livesEarned >= 1) {
-                                    playScoreSound(100); // 생명권 획득
+                                // 🆕 효과음 재생 (자신이 맞췄을 때와 동일한 규칙)
+                                // - 3글자: 100 110 120.mp3
+                                // - 4글자 이상: 400.mp3
+                                // - 2글자: 30.mp3 (생명권 미획득) 또는 100 110 120.mp3 (생명권 획득)
+                                if (wordLength >= 3) {
+                                    if (wordLength === 3) {
+                                        playScoreSound(100); // 100 110 120.mp3
+                                    } else if (wordLength >= 4) {
+                                        playScoreSound(400); // 400.mp3
+                                    }
                                 } else {
-                                    playScoreSound(30); // 생명권 미획득
+                                    // 2글자는 생명권 획득 여부에 따라
+                                    if (livesEarned >= 1) {
+                                        playScoreSound(100); // 100 110 120.mp3 (특별초성)
+                                    } else {
+                                        playScoreSound(30); // 30.mp3 (일반)
+                                    }
                                 }
                             }
                         }
@@ -7456,7 +7482,10 @@
             }
             
             // 타이머 시작 (서버 시간 기준으로 정확한 계산)
-            const serverStartTime = roomData.turnStartTime || Date.now();
+            // 🆕 서버 turnStartTime을 클라이언트 시간 기준으로 변환
+            const serverStartTimeRaw = roomData.turnStartTime || Date.now();
+            // 서버 turnStartTime은 서버 시간 기준이므로, 클라이언트 시간으로 변환
+            const serverStartTime = serverStartTimeRaw + (multiplayerState.serverTimeOffset || 0);
             let lastPlayedSecond = -1; // 효과음 중복 재생 방지
             let timeoutSent = false; // 중복 전송 방지
             let lastDisplayedSecond = -1; // 마지막 표시된 초 (중복 업데이트 방지)
@@ -7483,13 +7512,12 @@
                 
                 // 🆕 타이머 동기화: 서버 시간 오프셋을 적용한 정확한 남은 시간 계산
                 const clientNow = Date.now();
-                // 서버 시간 = 클라이언트 시간 - 오프셋
-                const serverNow = clientNow - (multiplayerState.serverTimeOffset || 0);
-                // 서버 시작 시간부터 경과한 시간 (서버 시간 기준)
-                const elapsedMs = serverNow - serverStartTime;
-                const elapsed = Math.max(0, elapsedMs / 1000); // 초 단위 (소수점 포함)
+                // serverStartTime은 이미 클라이언트 시간 기준으로 변환되었으므로, 직접 계산
+                const elapsedMs = Math.max(0, clientNow - serverStartTime);
+                const elapsed = elapsedMs / 1000; // 초 단위 (소수점 포함)
                 timeLeft = Math.max(0, turnTimeLimit - elapsed);
-                const timeLeftDisplay = Math.ceil(timeLeft); // 표시용 (올림 - 각 초가 정확히 1초씩 표시)
+                // 🆕 Math.floor 사용: 4.9초 → 4초로 표시 (정확한 카운트다운)
+                const timeLeftDisplay = Math.floor(timeLeft); // 표시용 (내림 - 정확한 초 단위 표시)
                 
                 // 중복 업데이트 방지 (같은 초를 여러 번 표시하지 않음)
                 if (timeLeftDisplay === lastDisplayedSecond) {
@@ -7509,15 +7537,18 @@
                     turnTimerEl.textContent = displayValue;
                 }
                 
-                // 효과음 재생 (2초, 1초 남았을 때)
-                if (isMyTurn && (timeLeftDisplay === 2 || timeLeftDisplay === 1) && timeLeftDisplay !== lastPlayedSecond) {
+                // 🆕 효과음 재생 (2초, 1초 남았을 때) - 자신의 턴과 상대방의 턴 모두 재생
+                // 🚀 게임이 진행 중이고, 현재 턴 플레이어가 있으면 모든 클라이언트에서 효과음 재생
+                const currentTurnPlayerId = currentRoomData?.currentTurnPlayerId;
+                if (currentTurnPlayerId && gameState.gameRunning && (timeLeftDisplay === 2 || timeLeftDisplay === 1) && timeLeftDisplay !== lastPlayedSecond) {
                     lastPlayedSecond = timeLeftDisplay;
                     try {
                         const turnSecondsSound = new Audio('./sound/turn_seconds.mp3');
                         turnSecondsSound.volume = gameState.sfxEnabled ? 1 : 0;
-                        turnSecondsSound.play().catch(err => console.log('[턴제] 효과음 재생 실패:', err));
+                        turnSecondsSound.play().catch(err => console.log('[턴제] turn_seconds 효과음 재생 실패:', err));
+                        console.log(`[턴제] turn_seconds 효과음 재생: ${timeLeftDisplay}초 남음 (현재 턴: ${currentTurnPlayerId})`);
                     } catch (err) {
-                        console.log('[턴제] 효과음 로드 실패:', err);
+                        console.log('[턴제] turn_seconds 효과음 로드 실패:', err);
                     }
                 }
                 
