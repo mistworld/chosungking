@@ -339,7 +339,7 @@
             font-size: 1.2em;
             border: 3px solid #dfe6e9;
             border-radius: 15px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             text-align: center;
             transition: all 0.3s ease;
             box-sizing: border-box;
@@ -349,6 +349,35 @@
             outline: none;
             border-color: #fd79a8;
             box-shadow: 0 0 0 3px rgba(253, 121, 168, 0.2);
+        }
+        
+        /* 🚀 이름 입력 모달 메시지 영역 (입력창 아래, 버튼 위) */
+        .mp-name-message {
+            font-size: 0.95em;
+            color: #636e72;
+            text-align: center;
+            margin-bottom: 15px;
+            padding: 12px 15px;
+            background: #fffacd;
+            border-radius: 10px;
+            border: 2px solid #fdcb6e;
+            min-height: 20px;
+            line-height: 1.5;
+            transition: all 0.3s ease;
+            white-space: pre-line; /* 🚀 줄바꿈 허용 */
+            word-break: keep-all; /* 🚀 단어 단위로 줄바꿈 */
+        }
+        
+        .mp-name-message.error {
+            background: #ffe5e5;
+            border-color: #ff7675;
+            color: #d63031;
+        }
+        
+        .mp-name-message.info {
+            background: #e8f5e9;
+            border-color: #55efc4;
+            color: #00b894;
         }
         
         .mp-name-buttons {
@@ -891,7 +920,7 @@
             bottom: 160px; /* 단어 입력창 위, 단어 쌓이는 영역 살짝 침범 가능 */
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(253, 121, 168, 0.95);
+            background: rgba(255, 152, 0, 0.95); /* 🚀 핑크 → 주황/코랄 계열로 변경 */
             color: white;
             padding: 15px 25px;
             border-radius: 15px;
@@ -3678,7 +3707,9 @@
     <div id="mpNameModal" class="mp-modal-overlay hidden">
         <div class="mp-name-modal">
             <div class="mp-name-title">✏️ 이름 변경</div>
-            <input type="text" id="mpNameInput" class="mp-name-input" placeholder="이름을 입력하세요" maxlength="10">
+            <input type="text" id="mpNameInput" class="mp-name-input" placeholder="이름을 입력하세요" maxlength="8">
+            <!-- 🚀 메시지 영역 (입력창 아래, 버튼 위) -->
+            <div id="mpNameMessage" class="mp-name-message" style="display: none;"></div>
             <div class="mp-name-buttons">
                 <button class="mp-name-confirm" onclick="confirmName()">확인</button>
                 <button class="mp-name-cancel" onclick="cancelName()">취소</button>
@@ -4107,11 +4138,35 @@
                     }
                     
                     // 턴제 모드에서는 서버에서 턴 확인 및 단어 제출
-                    const response = await fetch('https://steep-moon-7816.sucksuck1114.workers.dev/api/validate-word', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ word: wordForGame })
-                    });
+                    // 🚀 속도 개선: 타임아웃 2초 설정
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 2000);
+                    
+                    let response;
+                    try {
+                        response = await fetch('https://steep-moon-7816.sucksuck1114.workers.dev/api/validate-word', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ word: wordForGame }),
+                            signal: controller.signal
+                        });
+                        clearTimeout(timeoutId);
+                    } catch (error) {
+                        clearTimeout(timeoutId);
+                        if (error.name === 'AbortError') {
+                            updateDefinition('요청 시간 초과 (2초)');
+                            if (gameState.isMobile && !isPC()) {
+                                showToast('⏱️', '응답이 너무 느립니다', 0);
+                            } else {
+                                showTurnModeToast('⏱️', '응답이 너무 느립니다');
+                            }
+                            playWrongSound();
+                            input.value = '';
+                            return;
+                        }
+                        throw error;
+                    }
+                    
                     if (!response.ok) {
                         throw new Error(`HTTP ${response.status}`);
                     }
@@ -4195,8 +4250,8 @@
                                 word: wordForGame,
                                 isValid: true,
                                 wordLength: wordForGame.length,
-                                hasSpecialConsonant: hasSpecialConsonant(wordForGame, currentChars),
-                                players: multiplayerState.players || []
+                                hasSpecialConsonant: hasSpecialConsonant(wordForGame, currentChars)
+                                // 🚀 players 배열 제거: 서버의 state.players만 사용
                             })
                         });
                         
@@ -4233,11 +4288,35 @@
                 
                 // 시간제 모드: 기존 로직
                 // 서버 검증은 띄어쓰기 제거한 단어로
-                const response = await fetch('https://steep-moon-7816.sucksuck1114.workers.dev/api/validate-word', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ word: wordForGame })
-                });
+                // 🚀 속도 개선: 타임아웃 2초 설정
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 2000);
+                
+                let response;
+                try {
+                    response = await fetch('https://steep-moon-7816.sucksuck1114.workers.dev/api/validate-word', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ word: wordForGame }),
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeoutId);
+                } catch (error) {
+                    clearTimeout(timeoutId);
+                    if (error.name === 'AbortError') {
+                        updateDefinition('요청 시간 초과 (2초)');
+                        if (gameState.isMobile && !isPC()) {
+                            showToast('⏱️', '응답이 너무 느립니다', 0);
+                        } else {
+                            updateEmoji('⏱️', '응답이 너무 느립니다', 0);
+                        }
+                        playWrongSound();
+                        input.value = '';
+                        return;
+                    }
+                    throw error;
+                }
+                
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}`);
                 }
@@ -5164,12 +5243,16 @@
                 });
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}));
-                    // 🆕 닉네임 중복 에러 처리
+                    // 🚀 닉네임 중복 에러 처리: 토스트 대신 모달 내부에 메시지 표시
                     if (errorData.error === 'DUPLICATE_NAME' || errorData.message) {
-                        showToast('⚠️', errorData.message || '이미 같은 닉네임이 있습니다. 다른 이름으로 변경해주세요.', 3000);
-                        // 닉네임 입력 모달 다시 열기
-                        multiplayerState.pendingRoomId = roomId;
-                        showNameModal();
+                        // 모달이 이미 열려있으면 메시지만 업데이트, 아니면 모달 열기
+                        const modal = document.getElementById('mpNameModal');
+                        if (modal.classList.contains('hidden')) {
+                            multiplayerState.pendingRoomId = roomId;
+                            showNameModal();
+                        }
+                        // 모달 내부에 에러 메시지 표시 (입력창을 가리지 않음)
+                        showNameModalMessage('같은 이름의 플레이어가 있습니다.\n다른 이름을 사용하세요.', 'error');
                         return;
                     }
                     throw new Error('방 입장 실패');
@@ -5465,41 +5548,109 @@
         function showNameModal() {
             const modal = document.getElementById('mpNameModal');
             const input = document.getElementById('mpNameInput');
+            const messageEl = document.getElementById('mpNameMessage');
+            
             // 이름 변경인 경우 현재 이름 표시, 방 입장인 경우 빈 값
             if (multiplayerState.pendingRoomId === 'CHANGE_NAME') {
                 const currentName = localStorage.getItem('playerName');
                 input.value = currentName || '';
+                // 🚀 이름 변경 모드: 7일 제한 체크 (localStorage에 이름이 있을 때만)
+                if (currentName) {
+                    const lastChange = localStorage.getItem('playerNameLastChange');
+                    if (lastChange) {
+                        const daysSinceChange = (Date.now() - parseInt(lastChange)) / (1000 * 60 * 60 * 24);
+                        if (daysSinceChange < 7) {
+                            const daysLeft = Math.ceil(7 - daysSinceChange);
+                            messageEl.textContent = `닉네임은 ${daysLeft}일 후에 변경할 수 있습니다.`;
+                            messageEl.className = 'mp-name-message info';
+                            messageEl.style.display = 'block';
+                        } else {
+                            messageEl.style.display = 'none';
+                        }
+                    } else {
+                        messageEl.style.display = 'none';
+                    }
+                } else {
+                    // 🚀 localStorage에 이름이 없으면 (시크릿 모드 등) 처음 입력으로 처리
+                    messageEl.style.display = 'none';
+                }
             } else {
+                // 🚀 처음 입력 모드: 1주일 제한 안내 메시지 표시
                 input.value = '';
+                const hasExistingName = localStorage.getItem('playerName');
+                if (!hasExistingName) {
+                    messageEl.textContent = '설정한 닉네임은 1주일 동안 변경할 수 없습니다.';
+                    messageEl.className = 'mp-name-message info';
+                    messageEl.style.display = 'block';
+                } else {
+                    messageEl.style.display = 'none';
+                }
             }
             modal.classList.remove('hidden');
             input.focus();
+        }
+        
+        // 🚀 모달 메시지 표시 헬퍼 함수
+        function showNameModalMessage(text, type = 'info') {
+            const messageEl = document.getElementById('mpNameMessage');
+            messageEl.textContent = text;
+            messageEl.className = `mp-name-message ${type}`;
+            messageEl.style.display = 'block';
+        }
+        
+        function hideNameModalMessage() {
+            const messageEl = document.getElementById('mpNameMessage');
+            messageEl.style.display = 'none';
         }
 
         function confirmName() {
             const input = document.getElementById('mpNameInput');
             const name = input.value.trim();
             if (!name) {
-                showToast('⚠️ 이름을 입력해주세요');
+                showNameModalMessage('⚠️ 이름을 입력해주세요', 'error');
                 input.focus(); // 입력 필드에 포커스 유지
                 return;
             }
             
             // 이름 변경인 경우 (방 입장이 아닌 경우)
             if (multiplayerState.pendingRoomId === 'CHANGE_NAME') {
+                // 🚀 7일 제한 체크 (localStorage에 playerName이 있을 때만 체크)
+                const existingName = localStorage.getItem('playerName');
+                if (existingName) {
+                    const lastChange = localStorage.getItem('playerNameLastChange');
+                    if (lastChange) {
+                        const daysSinceChange = (Date.now() - parseInt(lastChange)) / (1000 * 60 * 60 * 24);
+                        if (daysSinceChange < 7) {
+                            const daysLeft = Math.ceil(7 - daysSinceChange);
+                            showNameModalMessage(`닉네임은 ${daysLeft}일 후에 변경할 수 있습니다.`, 'error');
+                            input.focus();
+                            return;
+                        }
+                    }
+                }
+                // 🚀 localStorage에 이름이 없으면 (시크릿 모드 등) 처음 입력으로 처리
+                
+                // 7일 경과했거나 처음 변경하는 경우
                 localStorage.setItem('playerName', name);
-                // 🆕 24시간 제한 제거 - playerNameLastChange 저장 불필요
+                localStorage.setItem('playerNameLastChange', Date.now().toString());
                 multiplayerState.playerName = name;
                 document.getElementById('mpNameModal').classList.add('hidden');
+                hideNameModalMessage();
                 showToast('이름이 변경되었습니다');
                 multiplayerState.pendingRoomId = null;
                 return;
             }
             
             // 방 입장을 위한 이름 입력
+            const hasExistingName = localStorage.getItem('playerName');
             localStorage.setItem('playerName', name);
+            // 🚀 처음 이름 설정 시 변경 시간 저장
+            if (!hasExistingName) {
+                localStorage.setItem('playerNameLastChange', Date.now().toString());
+            }
             multiplayerState.playerName = name;
             document.getElementById('mpNameModal').classList.add('hidden');
+            hideNameModalMessage();
             if (multiplayerState.pendingRoomId === 'CREATE_NEW') {
                 // 🆕 방 제목과 게임 모드가 있으면 함께 전달
                 const roomTitle = multiplayerState.pendingRoomTitle || null;
@@ -5515,6 +5666,7 @@
 
         function cancelName() {
             document.getElementById('mpNameModal').classList.add('hidden');
+            hideNameModalMessage(); // 🚀 메시지 숨기기
             multiplayerState.pendingRoomId = null;
         }
 
@@ -5560,6 +5712,19 @@
                     // 1. 게임 종료 감지 (같은 라운드이고 endTime 있음)
                     if (roomData.endTime && serverRound === clientRound && !document.querySelector('.mp-result-modal')) {
                         console.log(`🔴 게임 종료 감지! (라운드 ${serverRound})`);
+                        
+                        // 🚀 게임 종료 시 타이머 정지
+                        if (gameState.turnTimer) {
+                            clearInterval(gameState.turnTimer);
+                            gameState.turnTimer = null;
+                        }
+                        
+                        // 🚀 탈락자 전용 나가기 버튼 제거 (모든 유저에게 나가기 버튼 표시됨)
+                        const turnModeLeaveBtn = document.getElementById('turnModeLeaveBtn');
+                        if (turnModeLeaveBtn) {
+                            turnModeLeaveBtn.classList.add('hidden');
+                            turnModeLeaveBtn.style.display = 'none';
+                        }
                         
                         // 게임 화면 숨기기
                         document.getElementById('gameScreen').classList.add('hidden');
@@ -5747,8 +5912,9 @@
                         updateTurnModeUsedWords(limitedUsedWords); // 최근 100개만 표시
                     }
                     
-                    // 🆕 생명권 소진 효과음 재생
-                    if (roomData.playerLives) {
+                    // 🆕 생명권 소진 효과음 재생 (게임 종료 시 정지)
+                    // 🚀 게임 종료 시(endTime이 설정되면) 생명권 소진 효과음 재생 안 함
+                    if (!roomData.endTime && roomData.playerLives) {
                         const currentLives = roomData.playerLives;
                         const lastLives = multiplayerState.lastPlayerLives || {};
                         
@@ -7186,10 +7352,10 @@
                 } else {
                     wordInput.classList.remove('my-turn');
                 }
-                // 탈락자만 비활성화, 생존자는 항상 활성화 (자신의 턴이 아니어도 "/"로 채팅 가능)
-                wordInput.disabled = isEliminated; // 탈락자만 비활성화
+                // 🚀 탈락자는 입력창 활성화 (채팅용), 생존자는 항상 활성화 (자신의 턴이 아니어도 "/"로 채팅 가능)
+                wordInput.disabled = false; // 탈락자도 입력창 활성화 (채팅 가능)
                 if (isEliminated) {
-                    wordInput.placeholder = '채팅을 입력하세요'; // 탈락자는 채팅 입력
+                    wordInput.placeholder = '채팅을 입력하세요 (탈락자)'; // 탈락자는 채팅 입력
                 } else {
                     wordInput.placeholder = isMyTurn ? '단어를 입력하세요' : '다른 플레이어의 턴입니다';
                 }
@@ -7244,6 +7410,14 @@
             gameState.turnTimer = setInterval(() => {
                 if (!gameState.gameRunning) {
                     clearInterval(gameState.turnTimer);
+                    return;
+                }
+                
+                // 🚀 게임 종료 시 타이머 정지 (endTime이 설정되면)
+                const currentRoomData = multiplayerState.lastRoomData;
+                if (currentRoomData && currentRoomData.endTime) {
+                    clearInterval(gameState.turnTimer);
+                    gameState.turnTimer = null;
                     return;
                 }
                 
@@ -7474,6 +7648,14 @@
         }
 
         function leaveGameRoom() {
+            // 🚀 게임 종료 모달이 표시되면 모든 유저가 나갈 수 있음
+            const resultModal = document.querySelector('.mp-result-modal');
+            if (resultModal) {
+                // 게임 종료 모달이 표시되면 나가기 가능
+                leaveRoom();
+                return;
+            }
+            
             // 🆕 탈락자는 게임 중에도 나갈 수 있음
             if (gameState.gameRunning && multiplayerState.isMultiplayer && multiplayerState.gameMode === 'turn') {
                 // 턴제 모드에서 탈락자인지 확인
