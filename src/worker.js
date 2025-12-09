@@ -857,13 +857,16 @@ async function handleLeaveRoom(request, env) {
 }
 
 async function handleGameState(request, env) {
-  const url = new URL(request.url);
-  const roomId = url.searchParams.get('roomId');
-  const pingPlayerId = url.searchParams.get('playerId') || null;
-  if (!roomId) {
-      return jsonResponse({ error: 'roomId is required' }, 400);
-  }
-  if (request.method === 'GET') {
+  let url = null;
+  let roomId = null;
+  try {
+      url = new URL(request.url);
+      roomId = url.searchParams.get('roomId');
+      const pingPlayerId = url.searchParams.get('playerId') || null;
+      if (!roomId) {
+          return jsonResponse({ error: 'roomId is required' }, 400);
+      }
+      if (request.method === 'GET') {
       const roomData = await env.ROOM_LIST.get(roomId, 'json');
       if (!roomData) {
           return jsonResponse({ error: 'Room not found' }, 404);
@@ -1165,6 +1168,16 @@ async function handleGameState(request, env) {
   }
   
   return doResponse;
+  } catch (error) {
+      console.error('[game-state] 에러 발생:', error);
+      console.error('[game-state] 스택:', error.stack);
+      const errorRoomId = roomId || (url ? url.searchParams.get('roomId') : null) || 'unknown';
+      return jsonResponse({ 
+          error: 'Internal server error', 
+          message: error.message,
+          roomId: errorRoomId
+      }, 500);
+  }
 }
 
 async function handleChat(request, env) {
