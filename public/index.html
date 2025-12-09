@@ -5095,9 +5095,17 @@
                         playerName: playerName
                     })
                 });
-                if (!createResponse.ok) throw new Error('방 생성 실패');
+                if (!createResponse.ok) {
+                    const errorData = await createResponse.json().catch(() => ({}));
+                    console.error('[방 생성] API 응답 오류:', createResponse.status, errorData);
+                    throw new Error(errorData.error || '방 생성 실패');
+                }
                 const createData = await createResponse.json();
                 const roomId = createData.roomId;
+                if (!roomId) {
+                    console.error('[방 생성] roomId가 없음:', createData);
+                    throw new Error('방 생성 실패: roomId 없음');
+                }
                 multiplayerState.roomId = roomId;
                 
                 // 🆕 방 생성 시 이미 방장이 입장했으므로 join-room 호출 불필요
@@ -5105,28 +5113,22 @@
                 closeRoomModal();
                 // 게임 시작 대신 대기실로 이동 (이전 버전과 동일)
                 updateStartScreenButtons();
-                startPolling(); // 폴링 시작
                 
-                // 🆕 빈 슬롯 즉시 표시!
-                document.getElementById('playerSlotsLeft').classList.remove('hidden');
-                document.getElementById('chatContainer').classList.remove('hidden');
-                
-                // 🆕 빈 슬롯 5개 먼저 만들기 (대기중 표시)
-                const slotsContainer = document.getElementById('playerSlotsLeft');
-                slotsContainer.innerHTML = '';
-                for (let i = 0; i < 5; i++) {
-                    const slot = document.createElement('div');
-                    slot.className = 'player-slot empty';
-                    slot.innerHTML = `
-                        <div class="player-slot-name">대기중...</div>
-                        <div class="player-slot-score">-</div>
-                    `;
-                    slotsContainer.appendChild(slot);
+                // 🚀 game-state 즉시 가져와서 슬롯 표시 (빈 슬롯 먼저 만들지 않음)
+                const roomResponse = await fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/game-state?roomId=${roomId}&playerId=${encodeURIComponent(multiplayerState.playerId || '')}`, {
+                    cache: 'no-cache'
+                });
+                if (!roomResponse.ok) {
+                    console.error('[방 생성] game-state 가져오기 실패:', roomResponse.status);
+                    throw new Error('방 상태를 가져올 수 없습니다');
                 }
-                
-                // 🆕 그 다음에 실제 플레이어 정보로 업데이트
-                const roomResponse = await fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/game-state?roomId=${roomId}`);
                 const roomData = await roomResponse.json();
+                
+                // 🚀 슬롯 즉시 표시 (updateScoreboard가 빈 슬롯도 처리함)
+                document.getElementById('playerSlotsLeft')?.classList.remove('hidden');
+                document.getElementById('chatContainer')?.classList.remove('hidden');
+                
+                startPolling(); // 폴링 시작
                 // 🆕 게임 모드 저장
                 multiplayerState.gameMode = roomData.gameMode || 'time';
                 multiplayerState.players = roomData.players || [];
