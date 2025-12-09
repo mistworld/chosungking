@@ -6203,15 +6203,15 @@
 
         function updateScoreboard(roomData) {
             // 🚀 멀티플레이 중이면 항상 슬롯 표시 (혼자 있어도!)
-            if (multiplayerState.isMultiplayer) {
+            // players 배열이 있고 비어있지 않을 때만 슬롯 표시
+            if (multiplayerState.isMultiplayer && roomData.players && Array.isArray(roomData.players) && roomData.players.length > 0) {
                 document.getElementById('playerSlotsLeft')?.classList.remove('hidden');
                 document.getElementById('chatContainer')?.classList.remove('hidden');
                 updatePlayerSlots(roomData);
                 return;
             }
             
-            // 🚀 멀티플레이가 아니면 무조건 슬롯 숨김 (최초 시작 화면 포함)
-            // 싱글플레이 로직 제거 - 멀티플레이가 아니면 무조건 숨김
+            // 🚀 멀티플레이가 아니거나 players가 없으면 무조건 슬롯 숨김 (최초 시작 화면 포함)
             document.getElementById('playerSlotsLeft')?.classList.add('hidden');
             document.getElementById('chatContainer')?.classList.add('hidden');
         }
