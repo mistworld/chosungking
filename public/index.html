@@ -5142,17 +5142,17 @@
                 }
                 const roomData = await roomResponse.json();
                 
-                // 🚀 슬롯 즉시 표시 (updateScoreboard가 빈 슬롯도 처리함)
-                document.getElementById('playerSlotsLeft')?.classList.remove('hidden');
-                document.getElementById('chatContainer')?.classList.remove('hidden');
-                
-                startPolling(); // 폴링 시작
-                // 🆕 게임 모드 저장
+                // 🆕 게임 모드 저장 (updateScoreboard 전에 설정)
                 multiplayerState.gameMode = roomData.gameMode || 'time';
                 multiplayerState.players = roomData.players || [];
                 
                 // 🆕 턴제 모드일 때 body에 클래스 추가
                 updateGameModeUI(multiplayerState.gameMode);
+                
+                // 🚀 슬롯 즉시 표시 (updateScoreboard가 빈 슬롯도 처리함)
+                updateScoreboard(roomData);
+                
+                startPolling(); // 폴링 시작
                 
                 // 🆕 방제 표시 업데이트 (방 생성 직후, 시간제/턴제 공통)
                 if (roomData.title && roomData.id) {

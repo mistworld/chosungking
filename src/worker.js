@@ -872,17 +872,36 @@ async function handleGameState(request, env) {
           return jsonResponse({ error: 'Room not found' }, 404);
       }
       const now = Date.now();
+      
+      // 🚀 lastSeen 초기화 (없으면 생성)
+      if (!roomData.lastSeen || typeof roomData.lastSeen !== 'object') {
+          roomData.lastSeen = {};
+          // 기존 플레이어들의 lastSeen을 현재 시간으로 설정 (방 생성 직후 대응)
+          if (roomData.players && roomData.players.length > 0) {
+              roomData.players.forEach(p => {
+                  if (!roomData.lastSeen[p.id]) {
+                      roomData.lastSeen[p.id] = now;
+                  }
+              });
+          }
+      }
+      
       if (pingPlayerId) {
-          if (!roomData.lastSeen) roomData.lastSeen = {};
           roomData.lastSeen[pingPlayerId] = now;
       }
       
       // 🚀 Stale player 자동 제거 (브라우저 탭 닫기 등으로 인한 연결 끊김 처리)
-      if (roomData.lastSeen && typeof roomData.lastSeen === 'object' && roomData.players && roomData.players.length > 0) {
+      // 단, 방 생성 직후(5초 이내)에는 stale player 체크 안 함
+      const roomAge = now - (roomData.createdAt || now);
+      const isNewRoom = roomAge < 5000; // 5초 이내
+      
+      if (!isNewRoom && roomData.players && roomData.players.length > 0) {
           const initialPlayerCount = roomData.players.length;
           const activePlayers = roomData.players.filter(p => {
               const last = roomData.lastSeen[p.id];
-              return last && (typeof last === 'number' && (now - last) < STALE_PLAYER_TIMEOUT);
+              // lastSeen이 없으면 active로 간주 (방 생성 직후 대응)
+              if (!last) return true;
+              return typeof last === 'number' && (now - last) < STALE_PLAYER_TIMEOUT;
           });
           
           // Stale player가 발견되면 제거
