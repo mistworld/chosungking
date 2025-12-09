@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>초성왕</title>
-    <!-- Force deploy: 2024-12-06-슬롯표시수정 -->
+    <!-- Force deploy: 2024-12-09-슬롯안정화+게임중탈락처리 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Do+Hyeon&display=swap" rel="stylesheet">
@@ -5132,38 +5132,15 @@
                 // 게임 시작 대신 대기실로 이동 (이전 버전과 동일)
                 updateStartScreenButtons();
                 
-                // 🚀 방 생성 직후 game-state 재시도 로직 (KV eventual consistency 대응)
-                let roomData = null;
-                let retryCount = 0;
-                const maxRetries = 5; // 최대 5회 시도
-                
-                while (retryCount < maxRetries) {
-                    const roomResponse = await fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/game-state?roomId=${roomId}&playerId=${encodeURIComponent(multiplayerState.playerId || '')}`, {
-                        cache: 'no-cache'
-                    });
-                    if (!roomResponse.ok) {
-                        console.error('[방 생성] game-state 가져오기 실패:', roomResponse.status);
-                        if (retryCount >= maxRetries - 1) {
-                            throw new Error('방 상태를 가져올 수 없습니다');
-                        }
-                        await new Promise(resolve => setTimeout(resolve, 100 + (retryCount * 50)));
-                        retryCount++;
-                        continue;
-                    }
-                    roomData = await roomResponse.json();
-                    
-                    // 자신의 playerId가 players 배열에 포함되어 있는지 확인
-                    const hasMe = roomData.players && roomData.players.some(p => p.id === multiplayerState.playerId);
-                    
-                    if (hasMe || retryCount >= maxRetries - 1) {
-                        // 플레이어가 나타났거나 최대 재시도 횟수에 도달
-                        break;
-                    }
-                    
-                    // 재시도 전 대기 (점진적 지연: 100ms, 150ms, 200ms, 250ms, 300ms)
-                    await new Promise(resolve => setTimeout(resolve, 100 + (retryCount * 50)));
-                    retryCount++;
+                // 🚀 game-state 즉시 가져와서 슬롯 표시 (빈 슬롯 먼저 만들지 않음)
+                const roomResponse = await fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/game-state?roomId=${roomId}&playerId=${encodeURIComponent(multiplayerState.playerId || '')}`, {
+                    cache: 'no-cache'
+                });
+                if (!roomResponse.ok) {
+                    console.error('[방 생성] game-state 가져오기 실패:', roomResponse.status);
+                    throw new Error('방 상태를 가져올 수 없습니다');
                 }
+                const roomData = await roomResponse.json();
                 
                 // 🆕 게임 모드 저장 (updateScoreboard 전에 설정)
                 multiplayerState.gameMode = roomData.gameMode || 'time';
@@ -5306,29 +5283,11 @@
                 // 방 입장 후 점수 팝업용 상태 초기화
                 multiplayerState.previousWordCounts = {};
 
-                // 🚀 입장 직후 game-state 재시도 로직 (KV eventual consistency 대응)
-                let roomData = null;
-                let retryCount = 0;
-                const maxRetries = 5; // 최대 5회 시도
-                
-                while (retryCount < maxRetries) {
-                    const stateResponse = await fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/game-state?roomId=${roomId}&playerId=${encodeURIComponent(multiplayerState.playerId || '')}`, {
-                        cache: 'no-cache'
-                    });
-                    roomData = await stateResponse.json();
-                    
-                    // 자신의 playerId가 players 배열에 포함되어 있는지 확인
-                    const hasMe = roomData.players && roomData.players.some(p => p.id === multiplayerState.playerId);
-                    
-                    if (hasMe || retryCount >= maxRetries - 1) {
-                        // 플레이어가 나타났거나 최대 재시도 횟수에 도달
-                        break;
-                    }
-                    
-                    // 재시도 전 대기 (점진적 지연: 100ms, 150ms, 200ms, 250ms, 300ms)
-                    await new Promise(resolve => setTimeout(resolve, 100 + (retryCount * 50)));
-                    retryCount++;
-                }
+                // 🚀 입장 직후 즉시 game-state 가져와서 슬롯 표시
+                const stateResponse = await fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/game-state?roomId=${roomId}&playerId=${encodeURIComponent(multiplayerState.playerId || '')}`, {
+                    cache: 'no-cache'
+                });
+                const roomData = await stateResponse.json();
                 
                 // 🚀 입장 직후 즉시 슬롯 표시 (폴링 시작 전에도)
                 multiplayerState.gameMode = roomData.gameMode || 'time';
@@ -5379,21 +5338,6 @@
                         `;
                     }
                 }
-                
-                startPolling(); // 폴링 시작
-                updateStartScreenButtons();
-                
-                // 🚀 폴링 시작 후 즉시 한 번 더 슬롯 업데이트 (입장자 동기화 보장)
-                setTimeout(() => {
-                    if (multiplayerState.isMultiplayer && multiplayerState.roomId) {
-                        fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/game-state?roomId=${multiplayerState.roomId}&playerId=${encodeURIComponent(multiplayerState.playerId || '')}`, {
-                            cache: 'no-cache'
-                        })
-                        .then(r => r.json())
-                        .then(data => updateScoreboard(data))
-                        .catch(err => console.log('[입장] 슬롯 업데이트 실패 (무시):', err));
-                    }
-                }, 300);
                 
                 joinOngoingGame(roomData);
             } catch (error) {
@@ -6346,12 +6290,15 @@
                 }
             }
 
-            // 실제 플레이어 슬롯
-            for (let i = 0; i < sortedPlayers.length && i < maxSlots; i++) {
-                const player = sortedPlayers[i];
+            // 실제 플레이어 슬롯 (탈락한 플레이어는 제외하여 슬롯 안정화)
+            const eliminatedSet = isTurnMode ? new Set(roomData.eliminatedPlayers || []) : new Set();
+            const activePlayersForSlots = sortedPlayers.filter(p => !eliminatedSet.has(p.id));
+            
+            for (let i = 0; i < activePlayersForSlots.length && i < maxSlots; i++) {
+                const player = activePlayersForSlots[i];
                 const isMe = player.id === multiplayerState.playerId;
                 const isCurrentTurn = isTurnMode && roomData.currentTurnPlayerId === player.id;
-                const isEliminated = isTurnMode && roomData.eliminatedPlayers?.includes(player.id);
+                const isEliminated = false; // 활성 플레이어만 표시하므로 항상 false
                 
                 if (isTurnMode) {
                     // 🆕 턴제 모드: 생명권, 턴 횟수 표시
@@ -6410,7 +6357,7 @@
             }
 
             // 빈 슬롯 추가
-            for (let i = sortedPlayers.length; i < maxSlots; i++) {
+            for (let i = activePlayersForSlots.length; i < maxSlots; i++) {
                 html += `
                     <div class="player-slot empty">
                         <div class="player-slot-name">대기중...</div>
@@ -6421,8 +6368,8 @@
 
             slotsContainer.innerHTML = html;
 
-            // 점수 변화 감지 및 팝업 애니메이션
-            sortedPlayers.forEach(player => {
+            // 점수 변화 감지 및 팝업 애니메이션 (활성 플레이어만)
+            activePlayersForSlots.forEach(player => {
                 const playerId = player.id;
                 const words = playerWords[playerId] || [];
                 const lastWord = words.length > 0 ? words[words.length - 1] : null;
@@ -7315,12 +7262,6 @@
                 return;
             }
             
-            // 🚀 멀티플레이가 아니면 슬롯 확실히 숨김 (최초 시작 화면)
-            if (!multiplayerState.isMultiplayer || !multiplayerState.roomId) {
-                document.getElementById('playerSlotsLeft')?.classList.add('hidden');
-                document.getElementById('chatContainer')?.classList.add('hidden');
-            }
-            
             // 이름 변경 버튼 표시/숨김 처리
             const changeNameContainer = document.getElementById('changeNameContainer');
             if (changeNameContainer) {
@@ -7748,13 +7689,6 @@
 
             // 시작 화면 버튼 업데이트 (혼자하기/함께하기) - 최초 시작 화면으로
             updateStartScreenButtons();
-            
-            // 🚀 최초 시작 화면으로 돌아왔으므로 슬롯 확실히 숨김 (폴링이 마지막 요청을 보낼 수 있으므로)
-            document.getElementById('playerSlotsLeft')?.classList.add('hidden');
-            document.getElementById('chatContainer')?.classList.add('hidden');
-            
-            // 🚀 빈 roomData로 updateScoreboard 호출하여 확실히 숨김
-            updateScoreboard({ players: [] });
         }
 
         function leaveGameRoom() {
