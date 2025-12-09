@@ -875,113 +875,23 @@ async function handleGameState(request, env) {
           return jsonResponse({ error: 'Room not found' }, 404);
       }
       const now = Date.now();
-      
-      // 🚀 lastSeen 초기화 (없으면 생성)
-      if (!roomData.lastSeen || typeof roomData.lastSeen !== 'object') {
-          roomData.lastSeen = {};
-          // 기존 플레이어들의 lastSeen을 현재 시간으로 설정 (방 생성 직후 대응)
-          if (roomData.players && roomData.players.length > 0) {
-              roomData.players.forEach(p => {
-                  if (!roomData.lastSeen[p.id]) {
-                      roomData.lastSeen[p.id] = now;
+      if (pingPlayerId) {
+          if (!roomData.lastSeen) roomData.lastSeen = {};
+          roomData.lastSeen[pingPlayerId] = now;
+          try {
+              await env.ROOM_LIST.put(roomId, JSON.stringify(roomData), {
+                  metadata: {
+                      id: roomId,
+                      createdAt: roomData.createdAt,
+                      playerCount: roomData.players?.length || 0,
+                      gameStarted: roomData.gameStarted || false,
+                      roundNumber: roomData.roundNumber || 0,
+                      title: roomData.title || '초성 배틀방',
+                      gameMode: roomData.gameMode || 'time'
                   }
               });
-          }
-      }
-      
-      if (pingPlayerId) {
-          roomData.lastSeen[pingPlayerId] = now;
-      }
-      
-      // 🚀 Stale player 자동 제거 (브라우저 탭 닫기 등으로 인한 연결 끊김 처리)
-      // 단, 방 생성 직후(5초 이내)에는 stale player 체크 안 함
-      const roomAge = now - (roomData.createdAt || now);
-      const isNewRoom = roomAge < 5000; // 5초 이내
-      
-      if (!isNewRoom && roomData.players && roomData.players.length > 0) {
-          const initialPlayerCount = roomData.players.length;
-          const activePlayers = roomData.players.filter(p => {
-              const last = roomData.lastSeen[p.id];
-              // lastSeen이 없으면 active로 간주 (방 생성 직후 대응)
-              if (!last) return true;
-              return typeof last === 'number' && (now - last) < STALE_PLAYER_TIMEOUT;
-          });
-          
-          // Stale player가 발견되면 제거
-          if (activePlayers.length < initialPlayerCount) {
-              const activePlayerIds = new Set(activePlayers.map(p => p.id));
-              const removedPlayers = roomData.players.filter(p => !activePlayerIds.has(p.id));
-              console.log(`[game-state] Stale player 제거: ${removedPlayers.map(p => p.id).join(', ')}`);
-              
-              // 방장이 stale이면 새 방장 선정
-              const oldHostId = roomData.hostId || (roomData.players.length > 0 ? roomData.players[0].id : null);
-              const wasHost = oldHostId && removedPlayers.some(p => p.id === oldHostId);
-              let newHostId = null;
-              
-              roomData.players = activePlayers;
-              if (roomData.scores) {
-                  removedPlayers.forEach(p => delete roomData.scores[p.id]);
-              }
-              if (roomData.playerWords) {
-                  removedPlayers.forEach(p => delete roomData.playerWords[p.id]);
-              }
-              
-              if (wasHost && activePlayers.length > 0) {
-                  newHostId = activePlayers[0].id;
-                  roomData.hostId = newHostId;
-                  console.log(`[game-state] 방장이 stale이어서 새 방장 선정: ${newHostId}`);
-              }
-              
-              // 🚀 턴제 모드: DO의 state.players도 업데이트
-              if (roomData.gameMode === 'turn' && env.GAME_STATE) {
-                  try {
-                      const id = env.GAME_STATE.idFromName(roomId);
-                      const stub = env.GAME_STATE.get(id);
-                      
-                      // DO의 state.players 동기화
-                      const syncRequest = new Request(`http://dummy/game-state?roomId=${roomId}`, {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                              action: 'sync_players',
-                              players: activePlayers
-                          })
-                      });
-                      await stub.fetch(syncRequest);
-                      
-                      // 방장 업데이트
-                      if (newHostId) {
-                          const updateHostRequest = new Request(`http://dummy/game-state?roomId=${roomId}`, {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({
-                                  action: 'update_host',
-                                  hostPlayerId: newHostId
-                              })
-                          });
-                          await stub.fetch(updateHostRequest);
-                      }
-                  } catch (e) {
-                      console.error('[game-state] DO stale player 제거 실패 (무시):', e);
-                  }
-              }
-              
-              // KV 업데이트
-              try {
-                  await env.ROOM_LIST.put(roomId, JSON.stringify(roomData), {
-                      metadata: {
-                          id: roomId,
-                          createdAt: roomData.createdAt,
-                          playerCount: activePlayers.length,
-                          gameStarted: roomData.gameStarted || false,
-                          roundNumber: roomData.roundNumber || 0,
-                          title: roomData.title || '초성 배틀방',
-                          gameMode: roomData.gameMode || 'time'
-                      }
-                  });
-              } catch (e) {
-                  console.error('[game-state] KV stale player 제거 실패 (무시):', e);
-              }
+          } catch (e) {
+              console.error('[game-state] lastSeen 업데이트 실패 (무시):', e);
           }
       }
       let doState = null;
