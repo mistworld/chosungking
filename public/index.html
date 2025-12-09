@@ -5735,26 +5735,7 @@
                     
                     const roomData = await response.json();
                     
-                    // 🆕 타이머 동기화: 서버 시간 오프셋 계산
-                    // serverTimeOffset = 클라이언트 시간 - 서버 시간
-                    // 양수면: 클라이언트가 서버보다 빠름
-                    // 음수면: 클라이언트가 서버보다 느림
-                    if (roomData.serverNow !== undefined) {
-                        const clientNow = Date.now();
-                        const newOffset = clientNow - roomData.serverNow;
-                        
-                        // 급격한 변화 방지: 기존 값과 평균 사용 (네트워크 지연 변동 완화)
-                        if (multiplayerState.serverTimeOffset === undefined || multiplayerState.serverTimeOffset === 0) {
-                            // 첫 계산이거나 초기값이면 바로 설정
-                            multiplayerState.serverTimeOffset = newOffset;
-                        } else {
-                            // 이동 평균으로 부드럽게 업데이트 (80% 기존 + 20% 새 값)
-                            multiplayerState.serverTimeOffset = multiplayerState.serverTimeOffset * 0.8 + newOffset * 0.2;
-                        }
-                        
-                        // 디버깅용 로그 (필요시 주석 해제)
-                        // console.log(`[시간동기화] serverTimeOffset: ${Math.round(multiplayerState.serverTimeOffset)}ms (새: ${Math.round(newOffset)}ms)`);
-                    }
+                    // 🚀 이전 버전 방식: 복잡한 오프셋 계산 제거 (서버 turnStartTime을 그대로 사용)
                     
                     // 🆕 최신 roomData 저장 (checkWord에서 탈락자 체크용)
                     multiplayerState.lastRoomData = roomData;
@@ -7478,8 +7459,8 @@
             }
             
             // 타이머 시작 (서버 시간 기준으로 정확한 계산)
-            // 🆕 서버 turnStartTime은 서버 시간 기준이므로, 서버 시간 기준으로 계산
-            const serverStartTimeRaw = roomData.turnStartTime || Date.now();
+            // 🚀 이전 버전 방식: 서버 turnStartTime을 그대로 사용 (서버와 클라이언트 시간 차이는 무시)
+            const serverStartTime = roomData.turnStartTime || Date.now();
             let lastPlayedSecond = -1; // 효과음 중복 재생 방지
             let timeoutSent = false; // 중복 전송 방지
             let lastDisplayedSecond = -1; // 마지막 표시된 초 (중복 업데이트 방지)
@@ -7504,16 +7485,13 @@
                     return;
                 }
                 
-                // 🆕 타이머 동기화: 서버 시간 오프셋을 적용한 정확한 남은 시간 계산
-                const clientNow = Date.now();
-                // 서버 현재 시간 = 클라이언트 시간 - 오프셋
-                const serverNow = clientNow - (multiplayerState.serverTimeOffset || 0);
-                // 서버 시작 시간부터 경과한 시간 (서버 시간 기준)
-                const elapsedMs = Math.max(0, serverNow - serverStartTimeRaw);
-                const elapsed = elapsedMs / 1000; // 초 단위 (소수점 포함)
+                // 🚀 이전 버전 방식: 서버 turnStartTime 기준으로 정확한 남은 시간 계산
+                const now = Date.now();
+                const elapsedMs = now - serverStartTime; // 서버 시작 시간부터 경과한 시간
+                const elapsed = Math.max(0, elapsedMs / 1000); // 초 단위 (소수점 포함)
                 timeLeft = Math.max(0, turnTimeLimit - elapsed);
-                // 🆕 Math.floor 사용: 4.9초 → 4초로 표시 (정확한 카운트다운)
-                const timeLeftDisplay = Math.floor(timeLeft); // 표시용 (내림 - 정확한 초 단위 표시)
+                // 🆕 Math.ceil 사용: 4.1초 → 5초로 표시 (이전 버전과 동일)
+                const timeLeftDisplay = Math.ceil(timeLeft); // 표시용 (올림 - 각 초가 정확히 1초씩 표시)
                 
                 // 중복 업데이트 방지 (같은 초를 여러 번 표시하지 않음)
                 if (timeLeftDisplay === lastDisplayedSecond) {
