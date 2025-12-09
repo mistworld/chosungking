@@ -1043,7 +1043,7 @@
 
         .mp-room-item:hover {
             border-color: #fd79a8;
-            transform: translateX(5px);
+            /* 🚀 transform 제거 - 호버 시 이동 효과 없음 */
             box-shadow: 0 4px 15px rgba(253, 121, 168, 0.2);
         }
 
@@ -5263,14 +5263,22 @@
                 // 방 입장 후 점수 팝업용 상태 초기화
                 multiplayerState.previousWordCounts = {};
 
-                const stateResponse = await fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/game-state?roomId=${roomId}`);
+                // 🚀 입장 직후 즉시 game-state 가져와서 슬롯 표시
+                const stateResponse = await fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/game-state?roomId=${roomId}&playerId=${encodeURIComponent(multiplayerState.playerId || '')}`, {
+                    cache: 'no-cache'
+                });
                 const roomData = await stateResponse.json();
                 
-                // 🆕 게임 모드 저장 및 시작 화면 문구 변경
+                // 🚀 입장 직후 즉시 슬롯 표시 (폴링 시작 전에도)
                 multiplayerState.gameMode = roomData.gameMode || 'time';
-                
-                // 🆕 턴제 모드일 때 body에 클래스 추가
                 updateGameModeUI(multiplayerState.gameMode);
+                
+                // 🚀 슬롯 즉시 표시
+                if (multiplayerState.isMultiplayer) {
+                    document.getElementById('playerSlotsLeft')?.classList.remove('hidden');
+                    document.getElementById('chatContainer')?.classList.remove('hidden');
+                    updatePlayerSlots(roomData);
+                }
                 
                 if (multiplayerState.gameMode === 'turn') {
                     const startInstruction = document.querySelector('.start-instruction');
@@ -6168,18 +6176,20 @@
         }
 
         function updateScoreboard(roomData) {
-            // 🆕 멀티플레이 중이면 항상 슬롯 표시 (혼자 있어도!)
+            // 🚀 멀티플레이 중이면 항상 슬롯 표시 (혼자 있어도!)
             if (multiplayerState.isMultiplayer) {
-                document.getElementById('playerSlotsLeft').classList.remove('hidden');
-                document.getElementById('chatContainer').classList.remove('hidden');
+                document.getElementById('playerSlotsLeft')?.classList.remove('hidden');
+                document.getElementById('chatContainer')?.classList.remove('hidden');
                 updatePlayerSlots(roomData);
                 return;
             }
             
+            // 🚀 멀티플레이가 아니면 무조건 슬롯 숨김 (최초 시작 화면 포함)
+            document.getElementById('playerSlotsLeft')?.classList.add('hidden');
+            document.getElementById('chatContainer')?.classList.add('hidden');
+            
             // 싱글플레이는 기존 로직
             if (!roomData.players || roomData.players.length < 2) {
-                document.getElementById('playerSlotsLeft').classList.add('hidden');
-                document.getElementById('chatContainer').classList.add('hidden');
                 return;
             }
 
@@ -7601,6 +7611,10 @@
             // 폴링 중지
             stopPolling();
             
+            // 🚀 슬롯 즉시 숨김 (isMultiplayer=false 전에)
+            document.getElementById('playerSlotsLeft')?.classList.add('hidden');
+            document.getElementById('chatContainer')?.classList.add('hidden');
+            
             // 멀티플레이 상태 완전 초기화
             multiplayerState.isMultiplayer = false;
             multiplayerState.roomId = null;
@@ -7619,9 +7633,9 @@
             document.getElementById('mpNameModal')?.classList.add('hidden');
             document.getElementById('mpRoomTitleModal')?.classList.add('hidden');
             
-            // 슬롯 + 채팅 숨기기
-            document.getElementById('playerSlotsLeft').classList.add('hidden');
-            document.getElementById('chatContainer').classList.add('hidden');
+            // 🚀 슬롯 + 채팅 숨기기 (중복이지만 확실하게)
+            document.getElementById('playerSlotsLeft')?.classList.add('hidden');
+            document.getElementById('chatContainer')?.classList.add('hidden');
             
             // 대기실 채팅도 숨기기 (멀티플레이 대기 중일 때 표시되는 것)
             document.getElementById('mpWaitingChat')?.classList.add('hidden');

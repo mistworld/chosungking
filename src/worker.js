@@ -67,14 +67,26 @@ export class GameStateRoom {
       const state = await this.ensureState(roomId);
       const now = Date.now();
 
-      if (state.gameMode === 'turn' && Array.isArray(update.players) && update.players.length > 0) {
-          if (!state.players || state.players.length === 0) {
+      // 🚀 핵심 수정: update.players로 state.players 덮어쓰기 제거
+      // 클라이언트가 보낸 players 배열은 무시하고, 서버의 state.players만 사용
+      // 새 플레이어 합류는 handleJoinRoom에서 처리
+
+      // 🚀 새 플레이어 합류 시 players 동기화 (KV → DO)
+      if (update.action === 'sync_players' && Array.isArray(update.players)) {
+          // KV의 players가 DO의 players보다 많으면 (새 플레이어 합류)
+          if (!state.players || update.players.length > state.players.length) {
               state.players = update.players;
-              console.log(`[턴제] state.players 초기화: ${state.players.map(p => p.id || p).join(', ')}`);
-          } else if (update.players.length > state.players.length) {
-              state.players = update.players;
-              console.log(`[턴제] state.players 업데이트 (새 플레이어 추가): ${state.players.map(p => p.id || p).join(', ')}`);
+              console.log(`[턴제] players 동기화: ${state.players.map(p => p.id || p).join(', ')} (턴 순서 끝에 추가)`);
+              await this.persistState(state);
           }
+          return state;
+      }
+      
+      // 🚀 방장 업데이트
+      if (update.action === 'update_host' && update.hostPlayerId) {
+          state.hostPlayerId = update.hostPlayerId;
+          await this.persistState(state);
+          return state;
       }
 
       if (update.playerId && update.score !== undefined) {
@@ -114,8 +126,11 @@ export class GameStateRoom {
               state.turnCount = {};
               state.isFirstTurn = true;
               
-              if (Array.isArray(update.players) && update.players.length > 0) {
-                  state.players = update.players;
+              // 🚀 게임 시작 시에만 players 초기화 (없을 때만)
+              if (!state.players || state.players.length === 0) {
+                  if (Array.isArray(update.players) && update.players.length > 0) {
+                      state.players = update.players;
+                  }
               }
               
               const players = state.players || [];
@@ -152,8 +167,11 @@ export class GameStateRoom {
               state.turnCount = {};
               state.isFirstTurn = true;
               
-              if (Array.isArray(update.players) && update.players.length > 0) {
-                  state.players = update.players;
+              // 🚀 게임 시작 시에만 players 초기화 (없을 때만)
+              if (!state.players || state.players.length === 0) {
+                  if (Array.isArray(update.players) && update.players.length > 0) {
+                      state.players = update.players;
+                  }
               }
               
               const players = state.players || [];
@@ -180,38 +198,8 @@ export class GameStateRoom {
               return state;
           }
           
-          if (state.turnStartTime) {
-              const turnTimeLimit = state.isFirstTurn ? 8000 : 5000; // 첫 턴 8초, 이후 5초 (화면에는 4-3-2-1-0으로 표시)
-              const elapsed = now - state.turnStartTime;
-              
-              if (elapsed >= turnTimeLimit) {
-                  console.log(`[턴제] ${playerId} 시간 초과 (${elapsed}ms >= ${turnTimeLimit}ms). 단어 거부`);
-                  
-                  if (!state.playerLives[playerId]) state.playerLives[playerId] = 0;
-                  state.playerLives[playerId] -= 1;
-                  
-                  if (state.playerLives[playerId] < 0) {
-                      if (!state.eliminatedPlayers.includes(playerId)) {
-                          state.eliminatedPlayers.push(playerId);
-                          console.log(`[턴제] ${playerId} 탈락!`);
-                      }
-                      
-                      const activePlayers = (state.players || []).filter(p => !state.eliminatedPlayers.includes(p.id));
-                      if (activePlayers.length <= 1) {
-                          state.gameStarted = false;
-                          state.endTime = now;
-                          return state;
-                      }
-                      
-                      await this.nextTurn(state, now, state.players || []);
-                  } else {
-                      state.turnStartTime = now;
-                      console.log(`[턴제] ${playerId} 연장권 사용. 다음 5초 시작 (화면: 4-3-2-1-0)`);
-                  }
-                  
-                  return state;
-              }
-          }
+          // 🚀 수정: 시간 체크 제거 - 생명권이 있으면 시간이 지나도 정답 입력 가능
+          // 생명권 처리는 turn_timeout에서만 처리
           
           if (isValid) {
               const wordLower = word.toLowerCase();
@@ -262,7 +250,7 @@ export class GameStateRoom {
                   }
                   
                   const activePlayers = (state.players || []).filter(p => !state.eliminatedPlayers.includes(p.id));
-                  if (activePlayers.length <= 1) {
+                  if (activePlayers.length === 0) {
                       state.gameStarted = false;
                       state.endTime = now;
                       return state;
@@ -347,14 +335,9 @@ export class GameStateRoom {
   }
 
   async nextTurn(state, now, players = []) {
-      // 🆕 players 배열이 전달되면 무조건 state.players 업데이트 (턴 순서 정확성 보장)
-      if (players.length > 0) {
-          state.players = players;
-          console.log(`[턴제] nextTurn: players 배열 업데이트: ${players.map(p => p.id || p).join(', ')}`);
-      }
-      
-      // 🆕 state.players 우선 사용, 없으면 전달받은 players 사용
-      let playerList = state.players && state.players.length > 0 ? state.players : (players.length > 0 ? players : []);
+      // 🚀 핵심 수정: players 파라미터 무시, state.players만 사용 (서버가 단일 소스)
+      // 클라이언트가 보낸 players 배열로 덮어쓰면 순서가 꼬임
+      let playerList = state.players || [];
       
       if (playerList.length === 0) {
           console.log('[턴제] nextTurn: players 배열이 비어있음 - 게임 종료');
@@ -367,9 +350,16 @@ export class GameStateRoom {
       const eliminatedSet = new Set(state.eliminatedPlayers || []);
       const activePlayers = playerList.filter(p => !eliminatedSet.has(p.id));
       
+      // 🚀 게임 종료 조건: activePlayers.length <= 1일 때 게임 종료
       if (activePlayers.length <= 1) {
+          if (activePlayers.length === 0) {
+              console.log('[턴제] nextTurn: 모든 플레이어 탈락 - 게임 종료');
+          } else {
+              console.log('[턴제] nextTurn: 1명만 남음 - 게임 종료 (승자 결정)');
+          }
           state.gameStarted = false;
           state.endTime = now;
+          await this.persistState(state);
           return;
       }
       
@@ -393,27 +383,10 @@ export class GameStateRoom {
           return;
       }
       
-      // 🆕 다음 플레이어 계산 (순환 구조: 0->1->2->0->1->2...)
+      // 🚀 간단한 턴 전환: 다음 플레이어로 이동 (순환 구조)
       const nextIndex = (currentIndex + 1) % activePlayers.length;
       const nextPlayer = activePlayers[nextIndex];
-      
-      // 🆕 같은 플레이어가 연속으로 턴을 받지 않도록 강력한 검증
-      if (nextPlayer.id === state.currentTurnPlayerId) {
-          console.warn(`[턴제] 경고: 같은 플레이어(${nextPlayer.id})가 연속 턴을 받을 뻔함. 다음 플레이어로 강제 이동`);
-          // 다음 다음 플레이어로 이동 (activePlayers.length가 1보다 크므로 안전)
-          const nextNextIndex = (nextIndex + 1) % activePlayers.length;
-          const nextNextPlayer = activePlayers[nextNextIndex];
-          // 🆕 또 같은 플레이어인지 확인
-          if (nextNextPlayer.id === state.currentTurnPlayerId && activePlayers.length > 2) {
-              // 세 번째 플레이어로 이동
-              const thirdIndex = (nextNextIndex + 1) % activePlayers.length;
-              state.currentTurnPlayerId = activePlayers[thirdIndex].id;
-          } else {
-              state.currentTurnPlayerId = nextNextPlayer.id;
-          }
-      } else {
-          state.currentTurnPlayerId = nextPlayer.id;
-      }
+      state.currentTurnPlayerId = nextPlayer.id;
       
       state.turnStartTime = now;
       state.isFirstTurn = false;
@@ -426,6 +399,9 @@ export class GameStateRoom {
       }
       
       console.log(`[턴제] 턴 전환: ${activePlayers[currentIndex]?.id} → ${state.currentTurnPlayerId} (인덱스: ${currentIndex} → ${nextIndex}, 활성 플레이어: ${activePlayers.length}명)`);
+      
+      // 🚀 중요: state 변경 후 저장 (게임 종료 버그 방지)
+      await this.persistState(state);
   }
 
   json(payload, status = 200) {
@@ -442,7 +418,7 @@ async function handleRooms(env) {
       ...corsHeaders,
       'Cache-Control': 'no-cache, no-store, must-revalidate'
   };
-  const STALE_PLAYER_TIMEOUT = 5 * 1000;
+  const STALE_PLAYER_TIMEOUT = 2 * 1000; // 🚀 2초로 단축 (브라우저 탭 닫기 등 즉시 감지)
   try {
       if (!env.ROOM_LIST) {
           console.log('ROOM_LIST가 없음!');
@@ -584,12 +560,17 @@ async function handleCreateRoom(request, env) {
   const now = Date.now();
   let roomNumber = 1;
   try {
+      // 🚀 최근 1시간 이내 방만 체크 (오래된 방 번호 무시)
+      const ONE_HOUR = 60 * 60 * 1000;
       const existing = await env.ROOM_LIST.list({ limit: 1000 });
       const usedNumbers = new Set();
       for (const key of existing.keys) {
           const meta = key.metadata;
-          if (meta && typeof meta.roomNumber === 'number' && meta.roomNumber > 0) {
-              usedNumbers.add(meta.roomNumber);
+          // 최근 1시간 이내 방만 체크
+          if (meta && typeof meta.createdAt === 'number' && (now - meta.createdAt) < ONE_HOUR) {
+              if (typeof meta.roomNumber === 'number' && meta.roomNumber > 0) {
+                  usedNumbers.add(meta.roomNumber);
+              }
           }
       }
       while (usedNumbers.has(roomNumber)) {
@@ -708,6 +689,7 @@ async function handleJoinRoom(request, env) {
           }
       });
   } else {
+      // 🚀 게임 중 새 유저 합류 처리 (턴제)
       if (roomData.gameMode === 'turn' && roomData.gameStarted) {
           try {
               if (env.GAME_STATE) {
@@ -719,6 +701,8 @@ async function handleJoinRoom(request, env) {
                   const stateResponse = await stub.fetch(stateRequest);
                   if (stateResponse.ok) {
                       const doState = await stateResponse.json();
+                      
+                      // 탈락자 재입장 처리
                       if (doState.eliminatedPlayers && doState.eliminatedPlayers.includes(playerId)) {
                           const rejoinRequest = new Request(`http://dummy/game-state?roomId=${roomId}`, {
                               method: 'POST',
@@ -731,10 +715,27 @@ async function handleJoinRoom(request, env) {
                           await stub.fetch(rejoinRequest);
                           console.log(`[join-room] 탈락자 ${playerId} 재입장 - eliminatedPlayers에 다시 추가`);
                       }
+                      
+                      // 🚀 새 유저 합류 시 DO의 state.players 동기화 (턴 순서 끝에 추가)
+                      if (!doState.eliminatedPlayers || !doState.eliminatedPlayers.includes(playerId)) {
+                          // 새 유저가 합류했고, DO의 players보다 KV의 players가 많으면 동기화
+                          if (!doState.players || roomData.players.length > doState.players.length) {
+                              const syncRequest = new Request(`http://dummy/game-state?roomId=${roomId}`, {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                      action: 'sync_players',
+                                      players: roomData.players
+                                  })
+                              });
+                              await stub.fetch(syncRequest);
+                              console.log(`[join-room] 게임 중 새 유저 합류: DO의 state.players 동기화 완료 (${roomData.players.length}명)`);
+                          }
+                      }
                   }
               }
           } catch (e) {
-              console.error('[join-room] 탈락자 재입장 처리 실패 (무시):', e);
+              console.error('[join-room] 게임 중 합류 처리 실패 (무시):', e);
           }
       }
       
@@ -774,6 +775,26 @@ async function handleLeaveRoom(request, env) {
   if (wasHost && roomData.players.length > 0) {
       newHostId = roomData.players[0].id;
       roomData.hostId = newHostId;
+      
+      // 🚀 턴제 모드: DO의 state.hostPlayerId도 업데이트
+      if (roomData.gameMode === 'turn' && env.GAME_STATE) {
+          try {
+              const id = env.GAME_STATE.idFromName(roomId);
+              const stub = env.GAME_STATE.get(id);
+              const updateRequest = new Request(`http://dummy/game-state?roomId=${roomId}`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                      action: 'update_host',
+                      hostPlayerId: newHostId
+                  })
+              });
+              await stub.fetch(updateRequest);
+              console.log(`[leave-room] 방장 승계: ${newHostId}가 새 방장이 됨`);
+          } catch (e) {
+              console.error('[leave-room] DO의 hostPlayerId 업데이트 실패 (무시):', e);
+          }
+      }
   }
   
   if (roomData.players.length === 0) {
@@ -841,20 +862,91 @@ async function handleGameState(request, env) {
       if (pingPlayerId) {
           if (!roomData.lastSeen) roomData.lastSeen = {};
           roomData.lastSeen[pingPlayerId] = now;
-          try {
-              await env.ROOM_LIST.put(roomId, JSON.stringify(roomData), {
-                  metadata: {
-                      id: roomId,
-                      createdAt: roomData.createdAt,
-                      playerCount: roomData.players?.length || 0,
-                      gameStarted: roomData.gameStarted || false,
-                      roundNumber: roomData.roundNumber || 0,
-                      title: roomData.title || '초성 배틀방',
-                      gameMode: roomData.gameMode || 'time'
+      }
+      
+      // 🚀 Stale player 자동 제거 (브라우저 탭 닫기 등으로 인한 연결 끊김 처리)
+      if (roomData.lastSeen && typeof roomData.lastSeen === 'object' && roomData.players && roomData.players.length > 0) {
+          const initialPlayerCount = roomData.players.length;
+          const activePlayers = roomData.players.filter(p => {
+              const last = roomData.lastSeen[p.id];
+              return last && (typeof last === 'number' && (now - last) < STALE_PLAYER_TIMEOUT);
+          });
+          
+          // Stale player가 발견되면 제거
+          if (activePlayers.length < initialPlayerCount) {
+              const activePlayerIds = new Set(activePlayers.map(p => p.id));
+              const removedPlayers = roomData.players.filter(p => !activePlayerIds.has(p.id));
+              console.log(`[game-state] Stale player 제거: ${removedPlayers.map(p => p.id).join(', ')}`);
+              
+              // 방장이 stale이면 새 방장 선정
+              const oldHostId = roomData.hostId || (roomData.players.length > 0 ? roomData.players[0].id : null);
+              const wasHost = oldHostId && removedPlayers.some(p => p.id === oldHostId);
+              let newHostId = null;
+              
+              roomData.players = activePlayers;
+              if (roomData.scores) {
+                  removedPlayers.forEach(p => delete roomData.scores[p.id]);
+              }
+              if (roomData.playerWords) {
+                  removedPlayers.forEach(p => delete roomData.playerWords[p.id]);
+              }
+              
+              if (wasHost && activePlayers.length > 0) {
+                  newHostId = activePlayers[0].id;
+                  roomData.hostId = newHostId;
+                  console.log(`[game-state] 방장이 stale이어서 새 방장 선정: ${newHostId}`);
+              }
+              
+              // 🚀 턴제 모드: DO의 state.players도 업데이트
+              if (roomData.gameMode === 'turn' && env.GAME_STATE) {
+                  try {
+                      const id = env.GAME_STATE.idFromName(roomId);
+                      const stub = env.GAME_STATE.get(id);
+                      
+                      // DO의 state.players 동기화
+                      const syncRequest = new Request(`http://dummy/game-state?roomId=${roomId}`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                              action: 'sync_players',
+                              players: activePlayers
+                          })
+                      });
+                      await stub.fetch(syncRequest);
+                      
+                      // 방장 업데이트
+                      if (newHostId) {
+                          const updateHostRequest = new Request(`http://dummy/game-state?roomId=${roomId}`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                  action: 'update_host',
+                                  hostPlayerId: newHostId
+                              })
+                          });
+                          await stub.fetch(updateHostRequest);
+                      }
+                  } catch (e) {
+                      console.error('[game-state] DO stale player 제거 실패 (무시):', e);
                   }
-              });
-          } catch (e) {
-              console.error('[game-state] lastSeen 업데이트 실패 (무시):', e);
+              }
+              
+              // KV 업데이트
+              try {
+                  await env.ROOM_LIST.put(roomId, JSON.stringify(roomData), {
+                      metadata: {
+                          id: roomId,
+                          createdAt: roomData.createdAt,
+                          playerCount: activePlayers.length,
+                          gameStarted: roomData.gameStarted || false,
+                          roundNumber: roomData.roundNumber || 0,
+                          title: roomData.title || '초성 배틀방',
+                          gameMode: roomData.gameMode || 'time'
+                      }
+                  });
+              } catch (e) {
+                  console.error('[game-state] KV stale player 제거 실패 (무시):', e);
+              }
           }
       }
       let doState = null;
@@ -889,6 +981,45 @@ async function handleGameState(request, env) {
               lastUpdate: null,
               chatMessages: []
           };
+      }
+      
+      // 🚀 턴제 모드: 새 플레이어 합류 시 DO의 state.players 동기화
+      if (doState.gameMode === 'turn' && roomData.players && roomData.players.length > 0) {
+          // KV의 players가 DO의 players보다 많으면 (새 플레이어 합류)
+          if (!doState.players || roomData.players.length > doState.players.length) {
+              // DO의 state.players를 KV의 players로 동기화 (새 플레이어 추가)
+              if (env.GAME_STATE) {
+                  try {
+                      const id = env.GAME_STATE.idFromName(roomId);
+                      const stub = env.GAME_STATE.get(id);
+                      const syncRequest = new Request(`http://dummy/game-state?roomId=${roomId}`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                              action: 'sync_players',
+                              players: roomData.players
+                          })
+                      });
+                      await stub.fetch(syncRequest);
+                      console.log(`[game-state] 새 플레이어 합류: DO의 state.players 동기화 완료`);
+                  } catch (e) {
+                      console.error('[game-state] players 동기화 실패 (무시):', e);
+                  }
+              }
+              // 동기화 후 다시 DO 상태 가져오기
+              if (env.GAME_STATE) {
+                  try {
+                      const id = env.GAME_STATE.idFromName(roomId);
+                      const stub = env.GAME_STATE.get(id);
+                      const doResponse = await stub.fetch(request);
+                      if (doResponse.ok) {
+                          doState = await doResponse.json();
+                      }
+                  } catch (error) {
+                      // 무시
+                  }
+              }
+          }
       }
       
       doState.players = roomData.players || [];
@@ -967,6 +1098,25 @@ async function handleGameState(request, env) {
   if (request.method === 'POST') {
       const clonedRequest = request.clone();
       updateBody = await clonedRequest.json();
+  }
+  
+  // 🚀 게임 시작 시 KV의 players를 DO에 전달
+  if (request.method === 'POST' && updateBody && (updateBody.action === 'start_game' || updateBody.action === 'new_game')) {
+      try {
+          const roomData = await env.ROOM_LIST.get(roomId, 'json');
+          if (roomData && roomData.players && roomData.players.length > 0) {
+              // KV의 players를 updateBody에 추가 (DO에서 사용)
+              updateBody.players = roomData.players;
+              // request body 업데이트
+              request = new Request(request.url, {
+                  method: 'POST',
+                  headers: request.headers,
+                  body: JSON.stringify(updateBody)
+              });
+          }
+      } catch (e) {
+          console.error('[game-state] KV players 가져오기 실패 (무시):', e);
+      }
   }
   
   const id = env.GAME_STATE.idFromName(roomId);
@@ -1116,11 +1266,13 @@ async function handleValidateWord(request, env) {
                     });
                 }
             } catch (error) {
-                // KV 읽기 실패 시 조용히 API로 폴백
+                // KV 읽기 실패 시 조용히 API로 폴백 (디버깅용 로그는 주석 처리)
+                // console.error(`[KV 읽기 실패] ${cacheKey}:`, error.message);
             }
         }
 
         // API 호출 (타임아웃 설정으로 빠른 응답)
+        const apiStartTime = performance.now();
         const apiUrl = new URL('https://stdict.korean.go.kr/api/search.do');
         apiUrl.searchParams.append('key', 'C670DD254FE59C25E23DC785BA2AAAFE');
         apiUrl.searchParams.append('q', trimmedWord);
@@ -1128,24 +1280,30 @@ async function handleValidateWord(request, env) {
 
         let xmlText;
         try {
-            // 타임아웃 설정 (3초)
+            // 타임아웃 설정 (1.5초로 단축 - 빠른 응답)
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 3000);
+            const timeoutId = setTimeout(() => controller.abort(), 1500);
             
             const response = await fetch(apiUrl.toString(), {
-                signal: controller.signal
+                signal: controller.signal,
+                // 추가 최적화: keepalive 비활성화로 빠른 연결 종료
+                keepalive: false
             });
             clearTimeout(timeoutId);
             xmlText = await response.text();
         } catch (fetchError) {
-            // API 호출 실패 시 오류 반환
+            const apiTime = Math.round(performance.now() - apiStartTime);
+            // API 호출 실패 시 오류 반환 (응답 시간 헤더 포함)
+            const errorHeaders = new Headers(corsHeaders);
+            errorHeaders.set('X-Response-Time', `${apiTime}ms`);
+            errorHeaders.set('X-Source', 'API_ERROR');
             return new Response(JSON.stringify({
                 valid: false,
                 error: '사전 검색 중 오류',
-                message: fetchError.name === 'AbortError' ? '요청 시간 초과' : fetchError.message
+                message: fetchError.name === 'AbortError' ? '요청 시간 초과 (1.5초)' : fetchError.message
             }), { 
                 status: 500, 
-                headers: corsHeaders 
+                headers: errorHeaders
             });
         }
 
@@ -1214,29 +1372,29 @@ async function handleValidateWord(request, env) {
         }
         
         // API 호출 결과를 KV에 저장 (30일 TTL) - 폴백용 캐시
+        // 🚀 비동기로 저장하여 응답 지연 최소화 (await 제거)
         if (kvBinding && result.valid) {
-            try {
-                // API 결과를 KV 형식으로 저장 (나중에 빠르게 읽기 위해)
-                const kvValue = {
-                    word: trimmedWord,
-                    definition: result.definitions[0]?.definition || '✅ 사전 등재 단어'
-                };
-                await kvBinding.put(cacheKey, JSON.stringify(kvValue), {
-                    expirationTtl: 30 * 24 * 60 * 60 // 30일
-                });
-            } catch (cacheError) {
-                // 캐시 저장 실패해도 결과는 반환
-            }
+            // 백그라운드에서 저장 (응답 지연 없음)
+            kvBinding.put(cacheKey, JSON.stringify({
+                word: trimmedWord,
+                definition: result.definitions[0]?.definition || '✅ 사전 등재 단어'
+            }), {
+                expirationTtl: 30 * 24 * 60 * 60 // 30일
+            }).catch(() => {
+                // 캐시 저장 실패해도 조용히 무시 (응답에는 영향 없음)
+            });
         }
+
+        const apiTime = Math.round(performance.now() - apiStartTime);
+        const responseHeaders = new Headers(corsHeaders);
+        responseHeaders.set('X-Cache', 'MISS');
+        responseHeaders.set('X-Source', 'API');
+        responseHeaders.set('X-Response-Time', `${apiTime}ms`);
+        responseHeaders.set('X-API-Time', `${apiTime}ms`);
 
         return new Response(JSON.stringify(result), { 
             status: 200, 
-            headers: {
-                ...corsHeaders,
-                'X-Cache': 'MISS',
-                'X-Source': 'API',
-                'X-Response-Time': 'API_CALL'
-            }
+            headers: responseHeaders
         });
 
     } catch (error) {
@@ -1271,7 +1429,7 @@ function jsonResponse(payload, status = 200) {
 export default {
     async fetch(request, env, ctx) {
         const url = new URL(request.url);
-        const WORKER_CODE_VERSION = 'WORKER-v15-OPTIMIZED-2025-12-06';
+        const WORKER_CODE_VERSION = 'WORKER-v16-SPEED-OPTIMIZED-2025-12-08';
         
         // 모든 요청에 즉시 버전 헤더 추가
         const baseHeaders = {
