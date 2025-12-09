@@ -6205,20 +6205,9 @@
             }
             
             // 🚀 멀티플레이가 아니면 무조건 슬롯 숨김 (최초 시작 화면 포함)
+            // 싱글플레이 로직 제거 - 멀티플레이가 아니면 무조건 숨김
             document.getElementById('playerSlotsLeft')?.classList.add('hidden');
             document.getElementById('chatContainer')?.classList.add('hidden');
-            
-            // 싱글플레이는 기존 로직
-            if (!roomData.players || roomData.players.length < 2) {
-                return;
-            }
-
-            // 슬롯 + 채팅 표시
-            document.getElementById('playerSlotsLeft').classList.remove('hidden');
-            document.getElementById('chatContainer').classList.remove('hidden');
-
-            // 플레이어 슬롯 업데이트
-            updatePlayerSlots(roomData);
         }
 
         // 플레이어 슬롯 업데이트 (점수 애니메이션 포함)
@@ -6231,6 +6220,24 @@
                 roomData.players = [];
             }
             
+            // 🚀 슬롯 오류 방지: player 객체 검증 및 필터링
+            const validPlayers = roomData.players.filter(player => {
+                // player가 객체이고 id와 name 속성이 있는지 확인
+                if (!player || typeof player !== 'object') {
+                    console.warn('[슬롯] 잘못된 player 객체 필터링:', player);
+                    return false;
+                }
+                if (!player.id || typeof player.id !== 'string') {
+                    console.warn('[슬롯] player.id가 없거나 문자열이 아님:', player);
+                    return false;
+                }
+                if (!player.name || typeof player.name !== 'string') {
+                    console.warn('[슬롯] player.name이 없거나 문자열이 아님:', player);
+                    return false;
+                }
+                return true;
+            });
+            
             // 순위별로 정렬
             // roomData.scores가 없으면 빈 객체로 초기화
             const scores = roomData.scores || {};
@@ -6238,8 +6245,8 @@
             
             // 🆕 턴제 모드: 입장순으로 정렬 (시간제는 점수순)
             const sortedPlayers = isTurnMode 
-                ? [...roomData.players] // 입장순 유지
-                : roomData.players.length > 0 ? roomData.players
+                ? [...validPlayers] // 입장순 유지 (검증된 players만 사용)
+                : validPlayers.length > 0 ? validPlayers
                     .map(player => {
                         const words = playerWords[player.id] || [];
                         const highestScore = words.length > 0 
