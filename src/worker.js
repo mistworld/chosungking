@@ -991,42 +991,54 @@ async function handleGameState(request, env) {
       // 게임 중: 브라우저 종료 감지하여 탈락 처리 (eliminatedPlayers에 추가)
       // players 배열은 유지하여 슬롯 안정화 (슬롯이 깜빡이지 않도록)
       if (doState.gameStarted && doState.gameMode === 'turn' && roomData.lastSeen && typeof roomData.lastSeen === 'object' && activePlayers.length > 0 && env.GAME_STATE) {
-          const GAME_STALE_TIMEOUT = 3 * 1000; // 3초 (게임 중 브라우저 종료 감지)
-          const eliminatedSet = new Set(doState.eliminatedPlayers || []);
-          let newEliminated = [];
+          // 🚀 게임 시작 후 15초 동안은 브라우저 종료 감지 비활성화 (오판 방지)
+          // 첫 턴이 8초이므로 그보다 길게 설정하여 폴링 안정화 시간 확보
+          const GAME_START_GRACE_PERIOD = 15 * 1000; // 15초 (게임 시작 후 안정화 시간)
+          const gameStartTime = doState.startTime || doState.createdAt || now;
+          const timeSinceGameStart = now - gameStartTime;
           
-          for (const player of activePlayers) {
-              if (!player || !player.id) continue;
-              if (eliminatedSet.has(player.id)) continue; // 이미 탈락한 플레이어는 스킵
+          // 게임 시작 후 15초가 지났을 때만 브라우저 종료 감지 활성화
+          if (timeSinceGameStart >= GAME_START_GRACE_PERIOD) {
+              const GAME_STALE_TIMEOUT = 3 * 1000; // 3초 (게임 중 브라우저 종료 감지)
+              const eliminatedSet = new Set(doState.eliminatedPlayers || []);
+              let newEliminated = [];
               
-              const last = roomData.lastSeen[player.id];
-              // 3초 이상 활동 없으면 브라우저 종료로 판단하여 탈락 처리
-              if (last && typeof last === 'number' && (now - last) >= GAME_STALE_TIMEOUT) {
-                  newEliminated.push(player.id);
-                  console.log(`[game-state] 게임 중 브라우저 종료 감지: ${player.id} 탈락 처리`);
-              }
-          }
-          
-          // 새로 탈락한 플레이어를 DO의 eliminatedPlayers에 추가
-          if (newEliminated.length > 0) {
-              try {
-                  const id = env.GAME_STATE.idFromName(roomId);
-                  const stub = env.GAME_STATE.get(id);
-                  for (const playerId of newEliminated) {
-                      const eliminateRequest = new Request(`http://dummy/game-state?roomId=${roomId}`, {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                              action: 'turn_timeout',
-                              playerId: playerId
-                          })
-                      });
-                      await stub.fetch(eliminateRequest);
+              for (const player of activePlayers) {
+                  if (!player || !player.id) continue;
+                  if (eliminatedSet.has(player.id)) continue; // 이미 탈락한 플레이어는 스킵
+                  
+                  const last = roomData.lastSeen[player.id];
+                  // lastSeen이 있고, 3초 이상 활동 없으면 브라우저 종료로 판단하여 탈락 처리
+                  if (last && typeof last === 'number' && (now - last) >= GAME_STALE_TIMEOUT) {
+                      newEliminated.push(player.id);
+                      console.log(`[game-state] 게임 중 브라우저 종료 감지: ${player.id} 탈락 처리`);
                   }
-                  console.log(`[game-state] 게임 중 ${newEliminated.length}명 탈락 처리 완료`);
-              } catch (e) {
-                  console.error('[game-state] 탈락 처리 실패 (무시):', e);
               }
+          
+              // 새로 탈락한 플레이어를 DO의 eliminatedPlayers에 추가
+              if (newEliminated.length > 0) {
+                  try {
+                      const id = env.GAME_STATE.idFromName(roomId);
+                      const stub = env.GAME_STATE.get(id);
+                      for (const playerId of newEliminated) {
+                          const eliminateRequest = new Request(`http://dummy/game-state?roomId=${roomId}`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                  action: 'turn_timeout',
+                                  playerId: playerId
+                              })
+                          });
+                          await stub.fetch(eliminateRequest);
+                      }
+                      console.log(`[game-state] 게임 중 ${newEliminated.length}명 탈락 처리 완료`);
+                  } catch (e) {
+                      console.error('[game-state] 탈락 처리 실패 (무시):', e);
+                  }
+              }
+          } else {
+              // 게임 시작 후 15초 이내: 브라우저 종료 감지 비활성화 (오판 방지)
+              // console.log(`[game-state] 게임 시작 후 ${Math.round(timeSinceGameStart/1000)}초 - 브라우저 종료 감지 비활성화`);
           }
       }
       
@@ -1093,6 +1105,9 @@ async function handleGameState(request, env) {
       if (!doState.players || !Array.isArray(doState.players)) {
           doState.players = [];
       }
+      
+      // 🆕 시간 동기화: 서버 현재 시간 전송
+      doState.serverNow = now;
       
       console.log(`[game-state] GET ${roomId}: players=${doState.players.length}, gameStarted=${doState.gameStarted}, chatMessages=${doState.chatMessages.length}`);
       

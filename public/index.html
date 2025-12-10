@@ -4910,7 +4910,8 @@
             // 🆕 턴제 효과음 추적 (상대방 효과음 재생용)
             lastUsedWordsCount: 0, // 이전 usedWords 배열 길이
             lastTurnCounts: {}, // 이전 turnCount 상태
-            lastPlayerLives: {} // 이전 playerLives 상태 (생명권 소진 효과음용)
+            lastPlayerLives: {}, // 이전 playerLives 상태 (생명권 소진 효과음용)
+            serverTimeOffset: 0 // 🆕 시간 동기화: 서버-클라이언트 시간 차이 (ms)
         };
 
         function isPC() {
@@ -5735,6 +5736,18 @@
                     
                     // 🆕 최신 roomData 저장 (checkWord에서 탈락자 체크용)
                     multiplayerState.lastRoomData = roomData;
+                    
+                    // 🆕 시간 동기화: 서버 시간과 클라이언트 시간의 차이 계산
+                    if (roomData.serverNow) {
+                        const newOffset = Date.now() - roomData.serverNow;
+                        if (multiplayerState.serverTimeOffset === 0) {
+                            multiplayerState.serverTimeOffset = newOffset;
+                        } else {
+                            multiplayerState.serverTimeOffset = Math.round(
+                                multiplayerState.serverTimeOffset * 0.8 + newOffset * 0.2
+                            );
+                        }
+                    }
                     
                     // 🆕 성공 시 에러 카운터 리셋
                     multiplayerState.pollingErrorCount = 0;
@@ -7443,8 +7456,10 @@
             }
             
             // 타이머 시작 (서버 시간 기준으로 정확한 계산)
-            const serverStartTime = roomData.turnStartTime || Date.now();
-            const clientNow = Date.now(); // 클라이언트 현재 시간 (서버 시간과의 차이 계산용)
+            // 🆕 서버 turnStartTime을 클라이언트 시간 기준으로 변환
+            const serverStartTimeRaw = roomData.turnStartTime || Date.now();
+            const serverStartTime = serverStartTimeRaw + (multiplayerState.serverTimeOffset || 0);
+            const clientNow = Date.now();
             let lastPlayedSecond = -1; // 효과음 중복 재생 방지
             let timeoutSent = false; // 중복 전송 방지
             let lastDisplayedSecond = -1; // 마지막 표시된 초 (중복 업데이트 방지)
