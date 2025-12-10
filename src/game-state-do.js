@@ -28,7 +28,12 @@ export class GameStateRoom {
             if (!snapshot) {
                 return this.json({ error: 'Room not found' }, 404);
             }
-            return this.json(snapshot);
+            // 🆕 타이머 동기화: 서버 현재 시간을 함께 전송
+            const responseData = {
+                ...snapshot,
+                serverNow: Date.now() // 서버 현재 시간 (밀리초)
+            };
+            return this.json(responseData);
         }
 
         if (request.method === 'POST') {
@@ -187,46 +192,8 @@ export class GameStateRoom {
                 return state;
             }
             
-            // 🆕 시간 초과 체크 (서버 측에서도 확인)
-            if (state.turnStartTime) {
-                const turnTimeLimit = state.isFirstTurn ? 9000 : 6000; // 첫 턴 9초, 이후 6초 (밀리초)
-                const elapsed = now - state.turnStartTime;
-                
-                if (elapsed >= turnTimeLimit) {
-                    // 시간 초과: 단어를 거부하고 turn_timeout 처리
-                    console.log(`[턴제] ${playerId} 시간 초과 (${elapsed}ms >= ${turnTimeLimit}ms). 단어 거부`);
-                    
-                    // 연장권 소진
-                    if (!state.playerLives[playerId]) state.playerLives[playerId] = 0;
-                    state.playerLives[playerId] -= 1;
-                    
-                    if (state.playerLives[playerId] < 0) {
-                        // 탈락
-                        if (!state.eliminatedPlayers.includes(playerId)) {
-                            state.eliminatedPlayers.push(playerId);
-                            console.log(`[턴제] ${playerId} 탈락!`);
-                        }
-                        
-                        // 활성 플레이어가 1명 남으면 게임 종료
-                        // 🆕 항상 서버 state.players만 사용 (클라이언트에서 보낸 players 무시)
-                        const activePlayers = (state.players || []).filter(p => !state.eliminatedPlayers.includes(p.id));
-                        if (activePlayers.length <= 1) {
-                            state.gameStarted = false;
-                            state.endTime = now;
-                            return state;
-                        }
-                        
-                        // 다음 턴으로 전환 (state.players만 사용)
-                        await this.nextTurn(state, now, state.players || []);
-                    } else {
-                        // 연장권이 남아있으면 다음 6초 시작
-                        state.turnStartTime = now;
-                        console.log(`[턴제] ${playerId} 연장권 사용. 다음 6초 시작`);
-                    }
-                    
-                    return state; // 단어 거부
-                }
-            }
+            // 🆕 시간 초과 체크는 클라이언트에서 turn_timeout으로 처리하므로 여기서는 제거
+            // (중복 생명권 소진 방지)
             
             if (isValid) {
                 // 중복 체크
@@ -270,39 +237,56 @@ export class GameStateRoom {
             }
         }
         
-        // 🆕 턴제 모드: 턴 시간 초과 처리
+        // 🆕 턴제 모드: 턴 시간 초과 처리 (클라이언트에서만 전송)
         if (update.action === 'turn_timeout' && state.gameMode === 'turn') {
             const { playerId } = update;
-            if (playerId === state.currentTurnPlayerId) {
-                // 연장권 소진 (5초 단위, 화면: 4-3-2-1-0)
-                if (!state.playerLives[playerId]) state.playerLives[playerId] = 0;
-                state.playerLives[playerId] -= 1;
+            // 🆕 중복 처리 방지: 현재 턴이 아니거나 이미 처리된 경우 무시
+            if (playerId !== state.currentTurnPlayerId) {
+                console.log(`[턴제] turn_timeout 무시: ${playerId}는 현재 턴이 아님 (현재: ${state.currentTurnPlayerId})`);
+                return state;
+            }
+            
+            // 🆕 서버에서 시간 초과 재확인 (클라이언트 시간과 서버 시간 차이 보정)
+            if (state.turnStartTime) {
+                const turnTimeLimit = state.isFirstTurn ? 9000 : 6000; // 첫 턴 9초, 이후 6초 (밀리초)
+                const elapsed = now - state.turnStartTime;
                 
-                console.log(`[턴제] ${playerId} 시간 초과. 연장권 -1, 현재: ${state.playerLives[playerId]}`);
-                
-                if (state.playerLives[playerId] < 0) {
-                    // 연장권이 0 이하가 되면 탈락
-                    if (!state.eliminatedPlayers.includes(playerId)) {
-                        state.eliminatedPlayers.push(playerId);
-                        console.log(`[턴제] ${playerId} 탈락!`);
-                    }
-                    
-                    // 활성 플레이어가 1명 남으면 게임 종료
-                    // 🆕 항상 서버 state.players만 사용
-                    const activePlayers = (state.players || []).filter(p => !state.eliminatedPlayers.includes(p.id));
-                    if (activePlayers.length <= 1) {
-                        state.gameStarted = false;
-                        state.endTime = now;
-                        return state;
-                    }
-                    
-                    // 다음 턴으로 전환 (state.players만 사용)
-                    await this.nextTurn(state, now, state.players || []);
-                } else {
-                    // 연장권이 남아있으면 다음 6초 시작
-                    state.turnStartTime = now;
-                    console.log(`[턴제] ${playerId} 연장권 사용. 다음 6초 시작`);
+                // 🆕 실제로 시간이 초과했는지 확인 (약간의 여유를 둠: 500ms)
+                if (elapsed < turnTimeLimit - 500) {
+                    console.log(`[턴제] turn_timeout 무시: 아직 시간이 남음 (${elapsed}ms < ${turnTimeLimit - 500}ms)`);
+                    return state;
                 }
+            }
+            
+            // 연장권 소진
+            if (!state.playerLives[playerId]) state.playerLives[playerId] = 0;
+            state.playerLives[playerId] -= 1;
+            
+            console.log(`[턴제] ${playerId} 시간 초과. 연장권 -1, 현재: ${state.playerLives[playerId]}`);
+            
+            if (state.playerLives[playerId] < 0) {
+                // 연장권이 0 이하가 되면 탈락
+                if (!state.eliminatedPlayers.includes(playerId)) {
+                    state.eliminatedPlayers.push(playerId);
+                    console.log(`[턴제] ${playerId} 탈락!`);
+                }
+                
+                // 활성 플레이어가 1명 남으면 게임 종료
+                // 🆕 항상 서버 state.players만 사용
+                const activePlayers = (state.players || []).filter(p => !state.eliminatedPlayers.includes(p.id));
+                if (activePlayers.length <= 1) {
+                    state.gameStarted = false;
+                    state.endTime = now;
+                    return state;
+                }
+                
+                // 다음 턴으로 전환 (state.players만 사용)
+                await this.nextTurn(state, now, state.players || []);
+            } else {
+                // 연장권이 남아있으면 다음 6초 시작
+                state.turnStartTime = now;
+                state.isFirstTurn = false; // 연장권 사용 시에는 첫 턴이 아님
+                console.log(`[턴제] ${playerId} 연장권 사용. 다음 6초 시작`);
             }
         }
 
