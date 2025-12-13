@@ -126,20 +126,29 @@ export class GameStateRoom {
               state.turnCount = {};
               state.isFirstTurn = true;
               
-              // 🚀 게임 시작 시에만 players 초기화 (없을 때만)
-              if (!state.players || state.players.length === 0) {
-                  if (Array.isArray(update.players) && update.players.length > 0) {
-                      state.players = update.players;
-                  }
+              // 🚀 새 라운드 시작 시 관전자도 자동 참여
+              // update.players가 있으면 업데이트 (관전자 포함)
+              if (Array.isArray(update.players) && update.players.length > 0) {
+                  state.players = update.players;
               }
+              // update.players가 없으면 기존 state.players 유지 (관전자 포함)
               
               const players = state.players || [];
               if (players.length > 0) {
+                  // 🆕 모든 플레이어에게 생명권 초기화 (관전자도 자동 참여)
+                  players.forEach(player => {
+                      const playerId = player.id || player;
+                      if (state.playerLives[playerId] === undefined) {
+                          state.playerLives[playerId] = 0;
+                      }
+                      if (state.turnCount[playerId] === undefined) {
+                          state.turnCount[playerId] = 0;
+                      }
+                  });
+                  
                   const firstPlayer = players[0];
                   state.currentTurnPlayerId = firstPlayer.id;
                   state.turnStartTime = now;
-                  state.playerLives[firstPlayer.id] = 0;
-                  state.turnCount[firstPlayer.id] = 0;
               } else {
                   state.currentTurnPlayerId = update.hostPlayerId || null;
                   state.turnStartTime = now;
@@ -267,8 +276,18 @@ export class GameStateRoom {
       // 🆕 강제 탈락 처리 (브라우저 종료 시)
       if (update.action === 'force_eliminate' && state.gameMode === 'turn') {
           const { playerId } = update;
-          if (playerId && !state.eliminatedPlayers.includes(playerId)) {
-              state.eliminatedPlayers.push(playerId);
+          if (playerId) {
+              // 🚀 DO의 state.players에서 제거 (슬롯에서 즉시 사라짐)
+              if (state.players && Array.isArray(state.players)) {
+                  state.players = state.players.filter(p => (p.id || p) !== playerId);
+                  console.log(`[턴제] ${playerId} DO에서 제거 (브라우저 종료)`);
+              }
+              
+              // eliminatedPlayers에도 추가 (혹시 모를 경우 대비)
+              if (state.eliminatedPlayers && !state.eliminatedPlayers.includes(playerId)) {
+                  state.eliminatedPlayers.push(playerId);
+              }
+              
               console.log(`[턴제] ${playerId} 강제 탈락 (브라우저 종료)`);
               
               // 현재 턴이었으면 다음 턴으로
@@ -799,6 +818,27 @@ async function handleLeaveRoom(request, env) {
   roomData.players = roomData.players.filter(p => p.id !== playerId);
   if (roomData.scores) delete roomData.scores[playerId];
   if (roomData.playerWords) delete roomData.playerWords[playerId];
+  
+  // 🚀 턴제 모드: 게임 중일 때 DO에서도 제거
+  if (roomData.gameMode === 'turn' && roomData.gameStarted && !roomData.endTime && env.GAME_STATE) {
+      try {
+          const id = env.GAME_STATE.idFromName(roomId);
+          const stub = env.GAME_STATE.get(id);
+          const removeRequest = new Request(`http://dummy/game-state?roomId=${roomId}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  action: 'force_eliminate',
+                  playerId: playerId
+              })
+          });
+          await stub.fetch(removeRequest);
+          console.log(`[leave-room] 게임 중 퇴장: DO에서 ${playerId} 제거 완료`);
+      } catch (e) {
+          console.error('[leave-room] DO에서 플레이어 제거 실패 (무시):', e);
+      }
+  }
+  
   if (wasHost && roomData.players.length > 0) {
       newHostId = roomData.players[0].id;
       roomData.hostId = newHostId;
@@ -981,12 +1021,25 @@ async function handleGameState(request, env) {
           }
       }
       
-      // 🚀 슬롯 안정화: lastSeen 기반 필터링 제거 (beforeunload로 대체)
-      // players 배열을 그대로 유지하여 슬롯이 들락날락하지 않도록 함
-      let activePlayers = roomData.players || [];
+      // 🚀 게임 중에는 DO의 state.players 우선 사용 (실시간 동기화)
+      // 대기실(게임 시작 전) 또는 종료 모달 상태에서는 KV의 players 사용
+      let finalPlayers = roomData.players || [];
+      if (doState.gameMode === 'turn' && doState.gameStarted && !doState.endTime) {
+          // 게임 중: DO의 state.players 우선 (더 정확한 실시간 상태)
+          if (doState.players && doState.players.length > 0) {
+              finalPlayers = doState.players;
+              // 🚀 새로 들어온 관전자는 KV에 있을 수 있으므로 병합 (중복 제거)
+              const doPlayerIds = new Set(doState.players.map(p => p.id || p));
+              const kvOnlyPlayers = (roomData.players || []).filter(p => {
+                  const playerId = p.id || p;
+                  return !doPlayerIds.has(playerId);
+              });
+              // DO players 뒤에 KV only players 추가 (관전자)
+              finalPlayers = [...doState.players, ...kvOnlyPlayers];
+          }
+      }
       
-      // players 배열은 안정적으로 유지 (슬롯 안정화)
-      doState.players = activePlayers;
+      doState.players = finalPlayers;
       doState.maxPlayers = roomData.maxPlayers || 5;
       doState.acceptingPlayers = roomData.acceptingPlayers !== false;
       doState.createdAt = roomData.createdAt;

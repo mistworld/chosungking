@@ -5799,7 +5799,7 @@
                         return;
                     }
                     
-                    // 🆕 게임이 진행 중인데 아직 참여하지 않은 경우 (중간 합류)
+                    // 🆕 게임 중 입장 시 관전자 모드로 처리 (자동 참여 안 함)
                     // 게임이 시작되었고, 초성이 있고, 게임이 종료되지 않았고, 아직 게임에 참여하지 않았으면
                     if (roomData.gameStarted && 
                         roomData.consonants && 
@@ -5807,15 +5807,43 @@
                         roomData.consonants.length > 0 &&
                         !roomData.endTime &&
                         !gameState.gameRunning) { // 게임이 실행 중이 아니면 (아직 참여 안 함)
-                        console.log(`🟡 [중간 합류] 게임 진행 중 참여! (라운드 ${serverRound}, 남은 시간: ${roomData.timeLeft || '계산 중'})`);
                         
-                        // 라운드 번호 및 점수 팝업 상태 업데이트
-                        multiplayerState.currentRound = serverRound;
-                        multiplayerState.previousWordCounts = {};
+                        // 🆕 관전자 체크: playerLives에 없거나 0인 경우 (게임 참여자가 아님)
+                        const hasPlayerLives = roomData.playerLives?.[multiplayerState.playerId] !== undefined;
                         
-                        // 게임 참여
-                        joinActiveGame(roomData);
-                        return;
+                        if (!hasPlayerLives) {
+                            // 관전자 모드: 게임에 참여하지 않고 관전만
+                            console.log(`👁️ [관전자 모드] 게임 진행 중 관전 (라운드 ${serverRound})`);
+                            
+                            // 게임 화면 숨기고 대기실 상태 유지
+                            document.getElementById('gameScreen').classList.add('hidden');
+                            document.getElementById('gameStartSection').classList.remove('hidden');
+                            
+                            // 채팅창과 슬롯은 표시
+                            document.getElementById('playerSlotsLeft')?.classList.remove('hidden');
+                            document.getElementById('chatContainer')?.classList.remove('hidden');
+                            
+                            // 관전자에게 나가기 버튼 표시
+                            const turnModeLeaveBtn = document.getElementById('turnModeLeaveBtn');
+                            if (turnModeLeaveBtn) {
+                                turnModeLeaveBtn.classList.remove('hidden');
+                                turnModeLeaveBtn.style.display = 'block';
+                            }
+                            
+                            // 다음 라운드부터 자동 참여는 라운드 시작 감지에서 처리됨
+                            return;
+                        } else {
+                            // 게임 참여자: 정상 참여
+                            console.log(`🟡 [중간 합류] 게임 진행 중 참여! (라운드 ${serverRound}, 남은 시간: ${roomData.timeLeft || '계산 중'})`);
+                            
+                            // 라운드 번호 및 점수 팝업 상태 업데이트
+                            multiplayerState.currentRound = serverRound;
+                            multiplayerState.previousWordCounts = {};
+                            
+                            // 게임 참여
+                            joinActiveGame(roomData);
+                            return;
+                        }
                     }
                     
                     // 3. 플레이어 수 변경 감지 및 방장 변경 체크
@@ -5991,6 +6019,26 @@
                     
                     // 슬롯 업데이트 (생명권, 턴 횟수)
                     updateScoreboard(roomData);
+                    
+                    // 🆕 나가기 버튼 표시 로직 (탈락자 + 관전자)
+                    const turnModeLeaveBtn = document.getElementById('turnModeLeaveBtn');
+                    if (turnModeLeaveBtn && roomData.gameMode === 'turn' && roomData.gameStarted && !roomData.endTime) {
+                        const isEliminated = roomData.eliminatedPlayers?.includes(multiplayerState.playerId);
+                        // 🆕 관전자 체크: playerLives에 없거나 0인 경우 (게임 참여자가 아님)
+                        const hasPlayerLives = roomData.playerLives?.[multiplayerState.playerId] !== undefined && 
+                                               (roomData.playerLives[multiplayerState.playerId] || 0) > 0;
+                        const isSpectator = !isEliminated && !hasPlayerLives;
+                        
+                        if (isEliminated || isSpectator) {
+                            // 탈락자 또는 관전자: 나가기 버튼 표시
+                            turnModeLeaveBtn.classList.remove('hidden');
+                            turnModeLeaveBtn.style.display = 'block';
+                        } else {
+                            // 게임 참여자: 나가기 버튼 숨김
+                            turnModeLeaveBtn.classList.add('hidden');
+                            turnModeLeaveBtn.style.display = 'none';
+                        }
+                    }
                     
                     // 게임 종료 체크 (1명만 남으면)
                     const activePlayers = (roomData.players || []).filter(p => 
@@ -6310,29 +6358,60 @@
             }
 
             // 실제 플레이어 슬롯
-            // 🚀 대기실(게임 시작 전)에서는 모든 플레이어 표시, 게임 중에만 탈락한 플레이어 제외
+            // 🚀 탈락자도 슬롯에 표시 (관전자 모드)
             const isGameStarted = roomData.gameStarted === true;
             const eliminatedSet = (isTurnMode && isGameStarted) ? new Set(roomData.eliminatedPlayers || []) : new Set();
-            const activePlayersForSlots = sortedPlayers.filter(p => !eliminatedSet.has(p.id));
             
-            for (let i = 0; i < activePlayersForSlots.length && i < maxSlots; i++) {
-                const player = activePlayersForSlots[i];
+            // 🆕 게임 참여자 구분: playerLives가 있거나 turnCount가 있는 사람
+            const gameParticipants = new Set();
+            if (isTurnMode && isGameStarted && roomData.playerLives) {
+                Object.keys(roomData.playerLives).forEach(playerId => {
+                    if (roomData.playerLives[playerId] !== undefined) {
+                        gameParticipants.add(playerId);
+                    }
+                });
+            }
+            
+            // 🆕 모든 플레이어 표시 (탈락자 포함), 단 게임 중에는 게임 참여 여부 구분
+            const allPlayersForSlots = sortedPlayers;
+            
+            for (let i = 0; i < allPlayersForSlots.length && i < maxSlots; i++) {
+                const player = allPlayersForSlots[i];
                 const isMe = player.id === multiplayerState.playerId;
                 const isCurrentTurn = isTurnMode && roomData.currentTurnPlayerId === player.id;
-                const isEliminated = false; // 활성 플레이어만 표시하므로 항상 false
+                const isEliminated = isTurnMode && isGameStarted && eliminatedSet.has(player.id);
+                
+                // 🆕 관전자 구분: 게임 중인데 게임 참여자가 아닌 경우 (새로 들어온 관전자)
+                const isSpectator = isTurnMode && isGameStarted && !doState.endTime && !gameParticipants.has(player.id) && !isEliminated;
                 
                 if (isTurnMode) {
                     // 🆕 턴제 모드: 생명권, 턴 횟수 표시
                     const lives = roomData.playerLives?.[player.id] || 0;
                     const turnCount = roomData.turnCount?.[player.id] || 0;
                     
+                    // 🆕 상태 텍스트 결정
+                    let statusText = '';
+                    if (isCurrentTurn) {
+                        statusText = '🟢';
+                    } else if (isEliminated) {
+                        statusText = '🔴 탈락';
+                    } else if (isSpectator) {
+                        statusText = '👁️ 관전중';
+                    }
+                    
                     html += `
-                        <div class="player-slot ${isEliminated ? 'eliminated' : ''} ${isCurrentTurn ? 'current-turn' : ''}" data-player-id="${player.id}">
+                        <div class="player-slot ${isEliminated ? 'eliminated' : ''} ${isCurrentTurn ? 'current-turn' : ''} ${isSpectator ? 'spectator' : ''}" data-player-id="${player.id}">
                             <div class="slot-header">
                                 <div class="slot-name">${player.name}</div>
-                                <div class="slot-status">${isCurrentTurn ? '🟢' : (isEliminated ? '🔴 탈락' : '')}</div>
+                                <div class="slot-status">${statusText}</div>
                             </div>
                             <div class="slot-info">
+                                ${isSpectator ? `
+                                <div class="slot-info-row">
+                                    <span class="icon">👁️</span>
+                                    <span>다음 라운드부터 참여</span>
+                                </div>
+                                ` : `
                                 <div class="slot-info-row">
                                     <span class="icon" style="color: #6bff6b; filter: hue-rotate(120deg) saturate(1.5) brightness(1.2);">❤️</span>
                                     <span>생명권 <span class="lives-count">${lives}</span>개</span>
@@ -6341,6 +6420,7 @@
                                     <span class="icon">📝</span>
                                     <span>${turnCount}개 맞춤</span>
                                 </div>
+                                `}
                             </div>
                         </div>
                     `;
@@ -6378,7 +6458,7 @@
             }
 
             // 빈 슬롯 추가
-            for (let i = activePlayersForSlots.length; i < maxSlots; i++) {
+            for (let i = allPlayersForSlots.length; i < maxSlots; i++) {
                 html += `
                     <div class="player-slot empty">
                         <div class="player-slot-name">대기중...</div>
@@ -6389,8 +6469,10 @@
 
             slotsContainer.innerHTML = html;
 
-            // 점수 변화 감지 및 팝업 애니메이션 (활성 플레이어만)
-            activePlayersForSlots.forEach(player => {
+            // 점수 변화 감지 및 팝업 애니메이션 (게임 참여자만)
+            const gamePlayerIds = isTurnMode && isGameStarted ? new Set(gameParticipants) : new Set(sortedPlayers.map(p => p.id));
+            sortedPlayers.forEach(player => {
+                if (!gamePlayerIds.has(player.id)) return; // 관전자는 점수 팝업 없음
                 const playerId = player.id;
                 const words = playerWords[playerId] || [];
                 const lastWord = words.length > 0 ? words[words.length - 1] : null;
