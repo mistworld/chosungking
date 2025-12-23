@@ -7089,6 +7089,10 @@
 
         // 🆕 finished 소리 중복 방지 플래그 (gameState에 저장하여 전역 관리)
         if (!gameState.finishedSoundPlaying) gameState.finishedSoundPlaying = false;
+
+        // 🆕 시간제 점수 서버 반영(폴링용) 전송 제어: 과도한 전송/깜빡임 방지
+        let lastTimeScoreSyncAt = 0;
+        let lastTimeScoreSyncedScore = 0;
         
         // 🆕 플레이어 이탈로 인한 게임 종료 메시지 표시
         function showPlayerLeftMessage() {
@@ -7679,10 +7683,21 @@
         checkWord = function() {
             originalCheckWord();
             if (multiplayerState.isMultiplayer) {
-                // 🚀 시간제 점수는 서버 반영(폴링)을 그대로 따르도록 유지 (깜빡임 방지)
-                // updatePlayerScore는 endGame 등 필요한 시점에만 사용
+                // 🚀 턴제는 기존대로 즉시 서버 반영
                 if (multiplayerState.gameMode === 'turn') {
                     updatePlayerScore();
+                } else {
+                    // 🆕 시간제는 폴링이 서버 점수(roomData.scores)를 보여주므로,
+                    // 최소한의 주기로만 서버에 점수 업데이트를 전송한다.
+                    const now = Date.now();
+                    const currentScore = Number(gameState.score) || 0;
+                    const canSend = (now - lastTimeScoreSyncAt) >= 800;
+                    const scoreIncreased = currentScore > lastTimeScoreSyncedScore;
+                    if (canSend && scoreIncreased) {
+                        lastTimeScoreSyncAt = now;
+                        lastTimeScoreSyncedScore = currentScore;
+                        updatePlayerScore();
+                    }
                 }
             }
         };
