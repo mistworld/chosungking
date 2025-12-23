@@ -6588,8 +6588,17 @@
             });
             
             // 순위별로 정렬
-            // roomData.scores가 없으면 빈 객체로 초기화
-            const scores = roomData.scores || {};
+            // roomData.scores가 없거나 비어있으면(일부 판에서 갱신 누락) players[].score로 보강 (시간제만)
+            let scores = roomData.scores || {};
+            if (!isTurnMode) {
+                const scoreKeys = scores ? Object.keys(scores) : [];
+                if ((!scores || scoreKeys.length === 0) && Array.isArray(roomData.players)) {
+                    scores = {};
+                    roomData.players.forEach(p => {
+                        if (p && p.id) scores[p.id] = Number(p.score) || 0;
+                    });
+                }
+            }
             const playerWords = roomData.playerWords || {};
             
             // 🆕 턴제 모드: 입장순으로 정렬 (시간제는 점수순)
@@ -7090,9 +7099,50 @@
         // 🆕 finished 소리 중복 방지 플래그 (gameState에 저장하여 전역 관리)
         if (!gameState.finishedSoundPlaying) gameState.finishedSoundPlaying = false;
 
-        // 🆕 시간제 점수 서버 반영(폴링용) 전송 제어: 과도한 전송/깜빡임 방지
-        let lastTimeScoreSyncAt = 0;
+        // 🆕 시간제 점수 서버 반영(폴링용) 전송 큐: 전송 누락 방지 + 과도한 호출 방지
+        let timeScoreSyncTimer = null;
+        let timeScoreSyncInFlight = false;
+        let timeScoreSyncPending = false;
         let lastTimeScoreSyncedScore = 0;
+
+        function scheduleTimeScoreSync() {
+            if (!multiplayerState.isMultiplayer || multiplayerState.gameMode === 'turn') return;
+            if (!multiplayerState.roomId) return;
+
+            const currentScore = Number(gameState.score) || 0;
+            // 점수가 증가하지 않았다면 굳이 전송하지 않음
+            if (currentScore <= lastTimeScoreSyncedScore) return;
+
+            timeScoreSyncPending = true;
+
+            if (timeScoreSyncTimer) return;
+            // 입력 연타/네트워크 지연을 흡수하기 위한 짧은 디바운스
+            timeScoreSyncTimer = setTimeout(async () => {
+                timeScoreSyncTimer = null;
+
+                // 전송 중이면 완료 후 다시 한 번만 보내도록 플래그 유지
+                if (timeScoreSyncInFlight) {
+                    timeScoreSyncPending = true;
+                    return;
+                }
+
+                if (!timeScoreSyncPending) return;
+
+                timeScoreSyncInFlight = true;
+                timeScoreSyncPending = false;
+                lastTimeScoreSyncedScore = Number(gameState.score) || 0;
+
+                try {
+                    await updatePlayerScore();
+                } finally {
+                    timeScoreSyncInFlight = false;
+                    // 전송 중간에 점수가 더 올랐으면 한 번 더 전송
+                    if (timeScoreSyncPending) {
+                        scheduleTimeScoreSync();
+                    }
+                }
+            }, 250);
+        }
         
         // 🆕 플레이어 이탈로 인한 게임 종료 메시지 표시
         function showPlayerLeftMessage() {
@@ -7687,17 +7737,9 @@
                 if (multiplayerState.gameMode === 'turn') {
                     updatePlayerScore();
                 } else {
-                    // 🆕 시간제는 폴링이 서버 점수(roomData.scores)를 보여주므로,
-                    // 최소한의 주기로만 서버에 점수 업데이트를 전송한다.
-                    const now = Date.now();
-                    const currentScore = Number(gameState.score) || 0;
-                    const canSend = (now - lastTimeScoreSyncAt) >= 800;
-                    const scoreIncreased = currentScore > lastTimeScoreSyncedScore;
-                    if (canSend && scoreIncreased) {
-                        lastTimeScoreSyncAt = now;
-                        lastTimeScoreSyncedScore = currentScore;
-                        updatePlayerScore();
-                    }
+                    // 🆕 시간제는 서버 점수(roomData.scores)를 폴링으로 표시하므로,
+                    // 전송은 '신뢰성 있게' 하되(누락 방지), UI는 낙관적으로 즉시 바꾸지 않는다.
+                    scheduleTimeScoreSync();
                 }
             }
         };
