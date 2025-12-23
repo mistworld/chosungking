@@ -4561,7 +4561,7 @@
             
             // 🆕 랜덤 배너 선택 (banner1~5.jpg)
             const randomBannerNum = Math.floor(Math.random() * 5) + 1;
-            const bannerImage = `./banner/banner${randomBannerNum}.jpg`;
+            const bannerImage = `/banner/banner${randomBannerNum}.jpg`;
             
             const overlay = document.createElement('div');
             overlay.className = 'game-end-overlay';
@@ -6051,6 +6051,35 @@
                     }
                     
                     const roomData = await response.json();
+
+                    // 🆕 방장 상태는 매 폴링마다 서버 players[0] 기준으로 동기화 (시간제 안정화)
+                    // 기존 로직은 '퇴장' 이벤트에서만 host 변경을 감지해서, 일부 상황에서 방장이 아닌 것으로 표시될 수 있음
+                    if (roomData && Array.isArray(roomData.players) && roomData.players.length > 0 && multiplayerState.playerId) {
+                        const serverHostId = roomData.players[0]?.id;
+                        if (serverHostId) {
+                            const shouldBeHost = serverHostId === multiplayerState.playerId;
+                            if (multiplayerState.isHost !== shouldBeHost) {
+                                multiplayerState.isHost = shouldBeHost;
+                                updateStartScreenButtons();
+                                if (roomData.gameMode === 'turn') {
+                                    updateGameModeUI('turn');
+                                }
+
+                                const resultModal = document.querySelector('.mp-result-modal');
+                                if (resultModal) {
+                                    const buttonsContainer = resultModal.querySelector('.mp-result-buttons');
+                                    if (buttonsContainer) {
+                                        buttonsContainer.innerHTML = `
+                                            ${multiplayerState.isHost 
+                                                ? '<button class="mp-result-btn replay" onclick="restartMultiplayerGame()">다시하기</button>' 
+                                                : '<div class="mp-waiting-message">방장이 다음 게임을 시작할 때까지 기다려주세요</div>'}
+                                            <button class="mp-result-btn home" onclick="goToHome()">방 나가기</button>
+                                        `;
+                                    }
+                                }
+                            }
+                        }
+                    }
                     
                     // 최신 roomData 저장 (checkWord에서 탈락자 체크용)
                     multiplayerState.lastRoomData = roomData;
@@ -6981,35 +7010,8 @@
                 }
                 multiplayerState.playerWords[multiplayerState.playerId] = words;
 
-                multiplayerState.optimisticScore = {
-                    playerId: multiplayerState.playerId,
-                    score: gameState.score,
-                    at: Date.now()
-                };
-                
-                // 🚀 클라이언트에서 즉시 내 점수 슬롯 반영 (KV 동기화 지연 보완)
-                const playersForSlots = (scoreResult && Array.isArray(scoreResult.players) && scoreResult.players.length > 0)
-                    ? scoreResult.players
-                    : ((multiplayerState.lastRoomData && Array.isArray(multiplayerState.lastRoomData.players) && multiplayerState.lastRoomData.players.length > 0)
-                        ? multiplayerState.lastRoomData.players
-                        : (multiplayerState.players || []));
-
-                if (Array.isArray(playersForSlots)) {
-                    const myPlayer = playersForSlots.find(p => p && p.id === multiplayerState.playerId);
-                    if (myPlayer) {
-                        myPlayer.score = gameState.score;
-                    }
-
-                    multiplayerState.players = playersForSlots;
-                    const roomData = {
-                        players: playersForSlots,
-                        scores: { ...multiplayerState.scores, [multiplayerState.playerId]: gameState.score },
-                        playerWords: multiplayerState.playerWords
-                    };
-                    multiplayerState.scores = roomData.scores;
-                    updatePlayerSlots(roomData);
-                    console.log(`[점수] 클라이언트 슬롯 즉시 반영: ${gameState.score}점`);
-                }
+                // 🆕 시간제 점수는 서버 반영(폴링)을 그대로 따르도록 유지 (깜빡임 방지)
+                // 즉시 슬롯 반영/낙관적 점수는 제거됨
             } catch (error) {
                 console.error('점수 업데이트 실패:', error);
             }
@@ -7252,7 +7254,7 @@
             
             // 🆕 랜덤 배너 선택 (banner1~5.jpg)
             const randomBannerNum = Math.floor(Math.random() * 5) + 1;
-            const bannerImage = `./banner/banner${randomBannerNum}.jpg`;
+            const bannerImage = `/banner/banner${randomBannerNum}.jpg`;
             
             // 🆕 인원수에 따른 그리드 레이아웃 결정
             let gridClass = 'single-column';
