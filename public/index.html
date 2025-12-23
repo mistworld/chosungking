@@ -7036,16 +7036,15 @@
                 // 🆕 턴제 모드일 때 players 배열 전송
                 const players = multiplayerState.players || [];
 
-const requestBody = {
-    action: action,
-    consonants: gameState.currentConsonants,
-    startTime: Date.now(),
-    timeLeft: 180,
-    gameMode: multiplayerState.gameMode || 'time', // 🆕 게임 모드 전송
-    players: players, // 🆕 플레이어 목록 전송
-    roomId: multiplayerState.roomId, // 🚀 roomId 추가 (DO에서 블랙리스트 조회용)
-    playerId: multiplayerState.playerId // ✅ start 요청자 식별용
-};
+                const requestBody = {
+                    action: action,
+                    consonants: gameState.currentConsonants,
+                    startTime: Date.now(),
+                    timeLeft: 180,
+                    gameMode: multiplayerState.gameMode || 'time', // 🆕 게임 모드 전송
+                    players: players, // 🆕 플레이어 목록 전송
+                    roomId: multiplayerState.roomId // 🚀 roomId 추가 (DO에서 블랙리스트 조회용)
+                };
 
                 // 🚀 방장은 players[0] (첫 입장자, 1등이 방장 되는 거 아님!)
 
