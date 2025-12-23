@@ -3795,6 +3795,8 @@
             isMobile: window.innerWidth <= 768
         };
 
+        const DEBUG_POLLING = false;
+
         // 초성 목록
         const CONSONANTS = ['ㄱ', 'ㄴ', 'ㄷ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅅ', 'ㅇ', 'ㅈ', 'ㅎ'];
         const SPECIAL_CONSONANTS = ['ㄲ', 'ㄸ', 'ㅃ', 'ㅆ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ'];
@@ -4727,6 +4729,26 @@
 
         let bgmAudio = null;
 
+        const sfxCache = {};
+
+        function playSfxFile(file, volume) {
+            if (!gameState.sfxEnabled) return;
+            try {
+                if (!sfxCache[file]) {
+                    const base = new Audio(file);
+                    base.preload = 'auto';
+                    try {
+                        base.load();
+                    } catch (e) {}
+                    sfxCache[file] = base;
+                }
+                const audio = sfxCache[file].cloneNode(true);
+                audio.volume = volume;
+                audio.currentTime = 0;
+                audio.play().catch(() => {});
+            } catch (e) {}
+        }
+
         function playBGM() {
             try {
                 // 턴제 모드: turn_background.mp3 루프
@@ -4792,26 +4814,13 @@
                 console.warn(`[소리] 점수 ${score}에 해당하는 소리 파일 없음`);
                 return;
             }
-            
-            try {
-                const audio = new Audio(soundFile);
-                audio.volume = 0.5;
-                console.log(`[소리] 재생 시도: ${soundFile} (점수: ${score})`);
-                audio.play().catch(e => {
-                    console.error(`[소리] 재생 실패: ${soundFile}`, e);
-                });
-            } catch (e) {
-                console.error(`[소리] 오디오 생성 실패: ${soundFile}`, e);
-            }
+
+            playSfxFile(soundFile, 0.5);
         }
 
         function playWrongSound() {
             if (!gameState.sfxEnabled) return;
-            try {
-                const audio = new Audio('wrong.mp3');
-                audio.volume = 0.5;
-                audio.play().catch(e => {});
-            } catch (e) {}
+            playSfxFile('wrong.mp3', 0.5);
         }
 
         function playTickSound() {
@@ -4836,11 +4845,7 @@
 
         function playTypingSound() {
             if (!gameState.typingEnabled) return;
-            try {
-                const audio = new Audio('typing.mp3');
-                audio.volume = 0.2;
-                audio.play().catch(e => {});
-            } catch (e) {}
+            playSfxFile('typing.mp3', 0.2);
         }
 
         function saveBestScore(score) {
@@ -5937,7 +5942,7 @@
                     if (!response.ok) {
                         // 🆕 404 에러: 방이 삭제됨 (턴제: 슬롯 1명만 남았을 때, 시간제: 모든 플레이어 나갔을 때)
                         if (response.status === 404) {
-                            console.log('[폴링] 방이 삭제됨 - 시작 화면으로 이동');
+                            if (DEBUG_POLLING) console.log('[폴링] 방이 삭제됨 - 시작 화면으로 이동');
 
                             // 종료 모달 제거
                             document.querySelector('.mp-result-modal')?.remove();
@@ -6152,7 +6157,7 @@
                     
                     // 항상 슬롯 업데이트 (게임 실행 중이어도 플레이어 목록 동기화)
                     // 플레이어 나가기/입장 시 즉시 반영되도록 매 폴링마다 호출
-                    console.log('[폴링] 슬롯 업데이트 - players:', roomData.players?.map(p => ({ id: p.id, name: p.name })), '총', roomData.players.length, '명');
+                    if (DEBUG_POLLING) console.log('[폴링] 슬롯 업데이트 - players:', roomData.players?.map(p => ({ id: p.id, name: p.name })), '총', roomData.players.length, '명');
                     updateScoreboard(roomData);
                 
                 // 턴제 모드: 턴 전환 감지 및 타이머 업데이트
@@ -6355,7 +6360,7 @@
                     // 게임이 시작되었는데 모달이 있으면 닫기 (방장이 새 게임 시작 시)
                     document.querySelector('.mp-result-modal')?.remove();
                     // finished 소리 플래그는 리셋하지 않음 (이전 게임 종료 소리가 완전히 끝날 때까지 대기)
-                    console.log('[폴링] 게임 시작 감지 - 모달 제거');
+                    if (DEBUG_POLLING) console.log('[폴링] 게임 시작 감지 - 모달 제거');
                 }
             } catch (error) {
                 // 에러 카운터 증가
