@@ -4236,7 +4236,7 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                 const inputEl = document.getElementById('wordInput');
                 const inputRect = inputEl && inputEl.getBoundingClientRect ? inputEl.getBoundingClientRect() : null;
                 // 입력창 바닥선 기준(확인 버튼 포함 컨테이너 기준이 아님)
-                const anchorY = inputRect ? Math.round(inputRect.bottom + offsetTop - 8) : Math.round(offsetTop + vh * 0.28);
+                const anchorY = inputRect ? Math.round(inputRect.top + offsetTop - 2) : Math.round(offsetTop + vh * 0.26);
                 const minY = Math.round(offsetTop + 16);
                 const maxY = Math.round(offsetTop + vh - 16);
                 const targetY = Math.max(minY, Math.min(maxY, anchorY));
