@@ -931,7 +931,7 @@
             border-radius: 15px;
             font-weight: bold;
             text-align: center;
-            z-index: 1000;
+            z-index: 20000;
             animation: toastPop 0.8s ease-in-out;
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
             max-width: calc(100vw - 36px);
@@ -3953,8 +3953,8 @@
         }
 
         function showScoreToast(emoji, message, score) {
-            // 🆕 PC 체크 강화: isPC() 함수와 gameState.isMobile 모두 체크
-            if (!gameState.isMobile || isPC()) return; // PC에서는 절대 토스트 안띄움
+            // 모바일에서만 표시 (화면 폭 기반 isPC()는 모바일 가로/태블릿에서 오판될 수 있어 사용하지 않음)
+            if (!gameState.isMobile) return;
             // 🆕 턴제 모드에서는 showTurnModeToast 사용 (PC에서도 표시되어야 함)
             if (document.body.classList.contains('turn-mode')) {
                 showTurnModeToast(emoji, message);
@@ -3969,6 +3969,11 @@
             toast.className = 'toast-message';
             toast.innerHTML = `<div class="toast-text">${emoji} ${message}</div><div class="toast-score">+${score}점</div>`;
             document.body.appendChild(toast);
+
+            // 디버그: 토스트 실행 여부 확인용 (배포 확인 후 제거 가능)
+            try {
+                toast.setAttribute('data-toast', '1');
+            } catch (e) {}
             
             setTimeout(() => {
                 if (toast.parentNode) {
