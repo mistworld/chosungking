@@ -3045,12 +3045,13 @@
                 color: #2d3436;
             }
 
-            .settings-newgame-btn {
+            .settings-menu-btn {
                 width: 100%;
                 padding: 12px;
                 margin-top: 10px;
-                background: #ff7675;
-                color: white;
+                background: white;
+                color: #2d3436;
+                border: 2px solid #dfe6e9;
                 border: none;
                 border-radius: 12px;
                 font-size: 1em;
@@ -3058,17 +3059,59 @@
                 cursor: pointer;
             }
 
-            .settings-close-btn {
-                width: 100%;
-                padding: 12px;
-                margin-top: 10px;
+            .settings-menu-btn:hover {
+                border-color: #fd79a8;
+            }
+
+            .settings-menu-btn.primary {
+                background: #ff7675;
+                color: white;
+                border: none;
+            }
+
+            .settings-menu-btn.close {
                 background: linear-gradient(135deg, #fd79a8, #fdcb6e);
                 color: white;
                 border: none;
-                border-radius: 12px;
-                font-size: 1em;
+            }
+
+            .guide-modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.7);
+                z-index: 10001;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+
+            .guide-content {
+                background: white;
+                border-radius: 20px;
+                padding: 22px;
+                width: 86%;
+                max-width: 340px;
+                max-height: 75vh;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .guide-title {
+                font-size: 1.25em;
                 font-weight: bold;
-                cursor: pointer;
+                text-align: center;
+                color: #2d3436;
+                margin-bottom: 14px;
+            }
+
+            .guide-text {
+                font-size: 0.98em;
+                color: #2d3436;
+                line-height: 1.55;
+                white-space: pre-line;
             }
 
             /* 게임 종료 화면에서만 스크롤 허용 */
@@ -3785,34 +3828,36 @@
             <div class="settings-title">⚙️ 설정</div>
             <div class="settings-item">
                 <div class="settings-label">🎵 BGM</div>
-                <input id="bgmVolume" class="settings-slider" type="range" min="0" max="100" value="30" oninput="setBgmVolumeFromUI(this.value)" />
                 <button id="modalBgmBtn" class="settings-toggle active" onclick="toggleModalBGM()">ON</button>
             </div>
             <div class="settings-item">
                 <div class="settings-label">🔊 효과음</div>
-                <input id="sfxVolume" class="settings-slider" type="range" min="0" max="100" value="70" oninput="setSfxVolumeFromUI(this.value)" />
                 <button id="modalSfxBtn" class="settings-toggle active" onclick="toggleModalSFX()">ON</button>
             </div>
             <div class="settings-item">
                 <div class="settings-label">⌨️ 타건음</div>
-                <input id="typingVolume" class="settings-slider" type="range" min="0" max="100" value="60" oninput="setTypingVolumeFromUI(this.value)" />
                 <button id="modalTypingBtn" class="settings-toggle active" onclick="toggleModalTyping()">ON</button>
             </div>
-            <button class="settings-newgame-btn" onclick="resetGameFromSettings()">🔄 새게임</button>
-            <button class="settings-guide-btn" onclick="toggleSettingsGuide()">📘 공략법</button>
-            <div id="settingsGuide" class="settings-guide hidden">
-                <div class="settings-guide-text">
-                    제시된 초성만으로 순서 상관없이 단어를 만들어보세요.<br>
-                    Tip) 세글자 이상 + 특별초성 활용하기!<br><br>
-                    2글자: 10점<br>
-                    3글자: 100점<br>
-                    4글자: 400점<br>
-                    5글자: 900점<br><br>
-                    특별초성ㄲㄸㅃㅆㅉㅊㅋㅌㅍ<br>
-                    : 20점 추가 보너스
-                </div>
-            </div>
-            <button class="settings-close-btn" onclick="closeSettings()">닫기</button>
+            <button class="settings-menu-btn primary" onclick="resetGameFromSettings()">🔄 새게임</button>
+            <button class="settings-menu-btn" onclick="openGuideModal()">📘 공략법</button>
+            <button class="settings-menu-btn close" onclick="closeSettings()">닫기</button>
+        </div>
+    </div>
+
+    <div id="guideModal" class="guide-modal hidden">
+        <div class="guide-content">
+            <div class="guide-title">📘 공략법</div>
+            <div class="guide-text">제시된 초성만으로 순서 상관없이 단어를 만들어보세요.
+Tip) 세글자 이상 + 특별초성 활용하기!
+
+2글자: 10점
+3글자: 100점
+4글자: 400점
+5글자: 900점
+
+특별초성ㄲㄸㅃㅆㅉㅊㅋㅌㅍ
+: 20점 추가 보너스</div>
+            <button class="settings-menu-btn close" onclick="closeGuideModal()" style="margin-top: 14px;">닫기</button>
         </div>
     </div>
 
@@ -3915,9 +3960,6 @@
             bgmEnabled: true,
             sfxEnabled: true,
             typingEnabled: true,
-            bgmVolume: 0.3,
-            sfxVolume: 0.7,
-            typingVolume: 0.6,
             tickSoundPlaying: false,
             bestScore: 0,
             roundCount: 0,
@@ -4856,9 +4898,6 @@
             const bgmBtn = document.getElementById('modalBgmBtn');
             const sfxBtn = document.getElementById('modalSfxBtn');
             const typingBtn = document.getElementById('modalTypingBtn');
-            const bgmSlider = document.getElementById('bgmVolume');
-            const sfxSlider = document.getElementById('sfxVolume');
-            const typingSlider = document.getElementById('typingVolume');
             
             bgmBtn.textContent = gameState.bgmEnabled ? 'ON' : 'OFF';
             bgmBtn.classList.toggle('active', gameState.bgmEnabled);
@@ -4868,35 +4907,18 @@
             
             typingBtn.textContent = gameState.typingEnabled ? 'ON' : 'OFF';
             typingBtn.classList.toggle('active', gameState.typingEnabled);
-
-            if (bgmSlider) bgmSlider.value = Math.round((gameState.bgmVolume ?? 0.3) * 100).toString();
-            if (sfxSlider) sfxSlider.value = Math.round((gameState.sfxVolume ?? 0.7) * 100).toString();
-            if (typingSlider) typingSlider.value = Math.round((gameState.typingVolume ?? 0.6) * 100).toString();
         }
 
-        function setBgmVolumeFromUI(v) {
-            const vol = Math.max(0, Math.min(1, (parseInt(v, 10) || 0) / 100));
-            gameState.bgmVolume = vol;
-            try { localStorage.setItem('ck_bgmVolume', String(vol)); } catch (e) {}
-            if (bgmAudio) bgmAudio.volume = vol;
+        function openGuideModal() {
+            const modal = document.getElementById('guideModal');
+            if (!modal) return;
+            modal.classList.remove('hidden');
         }
 
-        function setSfxVolumeFromUI(v) {
-            const vol = Math.max(0, Math.min(1, (parseInt(v, 10) || 0) / 100));
-            gameState.sfxVolume = vol;
-            try { localStorage.setItem('ck_sfxVolume', String(vol)); } catch (e) {}
-        }
-
-        function setTypingVolumeFromUI(v) {
-            const vol = Math.max(0, Math.min(1, (parseInt(v, 10) || 0) / 100));
-            gameState.typingVolume = vol;
-            try { localStorage.setItem('ck_typingVolume', String(vol)); } catch (e) {}
-        }
-
-        function toggleSettingsGuide() {
-            const guide = document.getElementById('settingsGuide');
-            if (!guide) return;
-            guide.classList.toggle('hidden');
+        function closeGuideModal() {
+            const modal = document.getElementById('guideModal');
+            if (!modal) return;
+            modal.classList.add('hidden');
         }
 
         function toggleModalBGM() {
