@@ -938,12 +938,10 @@
         }
 
         @keyframes toastPop {
-            0% { opacity: 0; transform: scale(0.8); }
-            50% { opacity: 1; transform: scale(1); }
-            100% { opacity: 0; transform: scale(0.8); }
-            0% { opacity: 0; transform: translateX(-50%) scale(0.8); }
-            50% { opacity: 1; transform: translateX(-50%) scale(1); }
-            100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+            0% { opacity: 0; transform: translateY(6px) scale(0.92); filter: blur(1px) saturate(1.2); }
+            40% { opacity: 1; transform: translateY(0) scale(1.03); filter: blur(0) saturate(1.35); }
+            70% { opacity: 1; transform: translateY(-2px) scale(1.0); filter: blur(0) saturate(1.2); }
+            100% { opacity: 0; transform: translateY(-10px) scale(0.98); filter: blur(1px) saturate(1.0); }
         }
         
         /* 멀티플레이 토스트 메시지 (PC용) */
@@ -3954,7 +3952,7 @@
             document.getElementById('definitionText').textContent = definition;
         }
 
-        function showToast(emoji, message, score) {
+        function showScoreToast(emoji, message, score) {
             // 🆕 PC 체크 강화: isPC() 함수와 gameState.isMobile 모두 체크
             if (!gameState.isMobile || isPC()) return; // PC에서는 절대 토스트 안띄움
             // 🆕 턴제 모드에서는 showTurnModeToast 사용 (PC에서도 표시되어야 함)
@@ -4114,7 +4112,7 @@
             if (wordForGame.length < 2 || wordForGame.length > 6) {
                 // 🆕 PC에서는 항상 updateEmoji 사용, 모바일에서만 showToast 사용
                 if (gameState.isMobile && !isPC()) {
-                    showToast('😓', '2~6글자만 가능해요', 0);
+                    showScoreToast('😓', '2~6글자만 가능해요', 0);
                 } else {
                     updateEmoji('😓', '2~6글자만 가능해요', 0);
                 }
@@ -4127,7 +4125,7 @@
             if (!isValid) {
                 // 🆕 PC에서는 항상 updateEmoji 사용, 모바일에서만 showToast 사용
                 if (gameState.isMobile && !isPC()) {
-                    showToast('😓', '초성을 확인해주세요', 0);
+                    showScoreToast('😓', '초성을 확인해주세요', 0);
                 } else {
                     updateEmoji('😓', '초성을 확인해주세요', 0);
                 }
@@ -4139,7 +4137,7 @@
             // 띄어쓰기 제거한 단어로 중복 체크
             if (gameState.usedWords && gameState.usedWords.includes(wordForGame)) {
                 if (gameState.isMobile) {
-                    showToast('😓', '이미 사용한 단어예요', 0);
+                    showScoreToast('😓', '이미 사용한 단어예요', 0);
                 } else {
                     updateEmoji('😓', '이미 사용한 단어예요', 0);
                 }
@@ -4165,7 +4163,7 @@
 
                         // 토스트 메시지 (턴제 모드: PC에서는 showTurnModeToast, 모바일에서만 showToast)
                         if (gameState.isMobile && !isPC()) {
-                            showToast('😓', '이미 나왔던 단어입니다', 0);
+                            showScoreToast('😓', '이미 나왔던 단어입니다', 0);
                         } else {
                             showTurnModeToast('😓', '이미 나왔던 단어입니다');
                         }
@@ -4193,7 +4191,7 @@
                         if (error.name === 'AbortError') {
                             updateDefinition('요청 시간 초과 (2초)');
                             if (gameState.isMobile && !isPC()) {
-                                showToast('⏱️', '응답이 너무 느립니다', 0);
+                                showScoreToast('⏱️', '응답이 너무 느립니다', 0);
                             } else {
                                 showTurnModeToast('⏱️', '응답이 너무 느립니다');
                             }
@@ -4256,7 +4254,7 @@
                         // 생명권 토스트는 기존 규칙 유지 (턴제 모드: PC에서는 showTurnModeToast, 모바일에서만 showToast)
                         if (livesEarned >= 1) {
                             if (gameState.isMobile && !isPC()) {
-                                showToast('❤️', `생명권 ${livesEarned}개 획득`, 0);
+                                showScoreToast('❤️', `생명권 ${livesEarned}개 획득`, 0);
                             } else {
                                 showTurnModeToast('❤️', `생명권 ${livesEarned}개 획득`);
                             }
@@ -4313,7 +4311,7 @@
                         
                         // 토스트 메시지 (턴제 모드: PC에서는 showTurnModeToast, 모바일에서만 showToast)
                         if (gameState.isMobile && !isPC()) {
-                            showToast('😓', '사전에 없는 단어입니다', 0);
+                            showScoreToast('😓', '사전에 없는 단어입니다', 0);
                         } else {
                             showTurnModeToast('😓', '사전에 없는 단어입니다');
                         }
@@ -4395,7 +4393,7 @@
                     
                     // 🆕 PC에서는 항상 updateEmoji 사용, 모바일에서만 showToast 사용
                     if (gameState.isMobile && !isPC()) {
-                        showToast(emoji, message, score.total);
+                        showScoreToast(emoji, message, score.total);
                     } else {
                         updateEmoji(emoji, message, score.total);
                     }
@@ -4406,7 +4404,7 @@
                 } else {
                     // 🆕 PC에서는 항상 updateEmoji 사용, 모바일에서만 showToast 사용
                     if (gameState.isMobile && !isPC()) {
-                        showToast('😓', '올바른 단어가 아니에요', 0);
+                        showScoreToast('😓', '올바른 단어가 아니에요', 0);
                     } else {
                         updateEmoji('😓', '올바른 단어가 아니에요', 0);
                     }
@@ -4415,7 +4413,7 @@
                 }
             } catch (error) {
                 if (gameState.isMobile) {
-                    showToast('😓', '오류가 발생했어요', 0);
+                    showScoreToast('😓', '오류가 발생했어요', 0);
                 } else {
                     updateEmoji('😓', '오류가 발생했어요', 0);
                 }
@@ -4644,7 +4642,7 @@
                 }
                 
                 // 🎉 토스트 메시지 표시 (확인 모달 제거)
-                showToast('최초의 시작화면으로 이동합니다.', 2000);
+                showMpToast('최초의 시작화면으로 이동합니다.');
             }
             
             clearInterval(gameState.gameTimer);
@@ -5236,7 +5234,7 @@
                 if (!createResponse.ok) {
                     const errorData = await createResponse.json().catch(() => ({}));
                     console.error('[방 생성] API 응답 오류:', createResponse.status, errorData);
-                    showToast(`방 생성 실패 (${createResponse.status}): ${errorData.error || '알 수 없는 오류'}`);
+                    showMpToast(`방 생성 실패 (${createResponse.status}): ${errorData.error || '알 수 없는 오류'}`);
                     throw new Error(errorData.error || `방 생성 실패 (${createResponse.status})`);
                 }
                 
@@ -5250,7 +5248,7 @@
                 const roomId = createData.roomId;
                 if (!roomId) {
                     console.error('[방 생성] roomId가 없음:', createData);
-                    showToast('방 생성 실패: roomId 없음');
+                    showMpToast('방 생성 실패: roomId 없음');
                     throw new Error('방 생성 실패: roomId 없음');
                 }
                 
@@ -5344,7 +5342,7 @@
                 updateScoreboard(roomData);
             } catch (error) {
                 console.error('방 생성 실패:', error);
-                showToast('방 생성에 실패했습니다');
+                showMpToast('방 생성에 실패했습니다');
             }
         }
 
@@ -5401,7 +5399,7 @@
                         return;
                     }
                     if (errorData && errorData.message) {
-                        showToast(errorData.message);
+                        showMpToast(errorData.message);
                         return;
                     }
                     throw new Error('방 입장 실패');
@@ -8228,7 +8226,7 @@
         // 방 나가기 - 최초 화면으로 완전히 돌아가기
         async function leaveRoom() {
             // 🎉 토스트 메시지 표시
-            showToast('최초의 시작화면으로 이동합니다.', 2000);
+            showMpToast('최초의 시작화면으로 이동합니다.');
             
             // 🚀 폴링 먼저 중지 (슬롯 덮어쓰기 방지)
             stopPolling();
