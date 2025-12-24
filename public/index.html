@@ -218,7 +218,7 @@
         .mobile-start-extra .mobile-instruction {
             font-family: 'Do Hyeon', sans-serif;
             font-size: 1.55em;
-            color: #2d3436;
+            color: #000;
             line-height: 1.25;
             letter-spacing: -0.6px;
             margin-bottom: 10px;
@@ -239,7 +239,7 @@
             margin-top: 16px;
             font-family: 'Do Hyeon', sans-serif;
             font-size: 1.35em;
-            color: #2d3436;
+            color: #4b5563;
             letter-spacing: -0.5px;
         }
 
@@ -256,6 +256,21 @@
             opacity: 0.8;
             color: #2d3436;
             letter-spacing: 0.2px;
+        }
+
+        #gameStartSection,
+        #gameStartSection .mobile-start-title,
+        #gameStartSection .start-title,
+        #gameStartSection .start-instruction,
+        #gameStartSection .mobile-start-extra,
+        #gameStartSection .mobile-start-extra .mobile-instruction,
+        #gameStartSection .mobile-start-extra .mobile-scoreline,
+        #gameStartSection .mobile-start-extra .mobile-hook,
+        #gameStartSection .mobile-start-extra .mobile-pc-teaser,
+        #gameStartSection .mobile-start-extra .mobile-domain,
+        #gameStartSection .best-score-display,
+        #gameStartSection .mode-start-btn {
+            font-family: 'Do Hyeon', sans-serif;
         }
 
         .score-guide {
@@ -3605,7 +3620,7 @@
             <div class="start-crown">👑</div>
             <div class="start-title">초성킹</div>
 
-            <div class="mobile-start-title" id="mobileStartTitle">👑 초성킹</div>
+            <div class="mobile-start-title" id="mobileStartTitle">👑초성킹👑</div>
             
             <div class="start-instruction">
                 긴 단어일수록 대박!<br>특별초성은 보너스!<br>준비되셨습니까?
@@ -5070,6 +5085,7 @@
             const startInstruction = document.querySelector('#gameStartSection .start-instruction');
             const bestScoreEl = document.getElementById('bestScoreDisplay');
             const togetherBtn = document.querySelector('#gameModeButtons .mode-start-btn.together');
+            const soloBtn = document.querySelector('#gameModeButtons .mode-start-btn.solo');
             const crown = document.querySelector('#gameStartSection .start-crown');
             const pcTitle = document.querySelector('#gameStartSection .start-title');
 
@@ -5078,6 +5094,7 @@
                 if (mobileTitle) mobileTitle.style.display = 'block';
                 if (startInstruction) startInstruction.style.display = 'none';
                 if (togetherBtn) togetherBtn.style.display = 'none';
+                if (soloBtn) soloBtn.textContent = '게임시작';
                 if (bestScoreEl) bestScoreEl.textContent = `최고기록 : ${gameState.bestScore}점`;
                 if (crown) crown.style.display = 'none';
                 if (pcTitle) pcTitle.style.display = 'none';
@@ -5086,6 +5103,7 @@
                 if (mobileTitle) mobileTitle.style.display = 'none';
                 if (startInstruction) startInstruction.style.display = '';
                 if (togetherBtn) togetherBtn.style.display = '';
+                if (soloBtn) soloBtn.textContent = '혼자하기';
                 if (bestScoreEl) bestScoreEl.textContent = `🏆 최고 기록: ${gameState.bestScore}점`;
                 if (crown) crown.style.display = '';
                 if (pcTitle) pcTitle.style.display = '';
@@ -8070,7 +8088,7 @@
                 // 싱글 모드 버튼
                 let buttonsHTML = `
                     <button class="mode-start-btn solo" onclick="startGame()">
-                        🎮 혼자하기
+                        🎮 게임시작
                     </button>
                 `;
                 
