@@ -3773,7 +3773,7 @@
 
     <script>
         // API 기본 URL
-        const API_BASE = 'https://steep-moon-7816.sucksuck1114.workers.dev';
+        const API_BASE = 'https://api.chosungking.com';
         
         // 게임 상태
         const gameState = {
@@ -4179,7 +4179,7 @@
                     
                     let response;
                     try {
-                        response = await fetch('https://steep-moon-7816.sucksuck1114.workers.dev/api/validate-word', {
+                        response = await fetch('https://api.chosungking.com/api/validate-word', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ word: wordForGame }),
@@ -4276,7 +4276,7 @@
                         // 🆕 단어 제출 플래그 설정 (turn_timeout 중복 방지)
                         gameState.wordSubmitted = true;
                         
-                        const submitResponse = await fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/game-state?roomId=${multiplayerState.roomId}`, {
+                        const submitResponse = await fetch(`https://api.chosungking.com/api/game-state?roomId=${multiplayerState.roomId}`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
@@ -4329,7 +4329,7 @@
                 
                 let response;
                 try {
-                    response = await fetch('https://steep-moon-7816.sucksuck1114.workers.dev/api/validate-word', {
+                    response = await fetch('https://api.chosungking.com/api/validate-word', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ word: wordForGame }),
@@ -5064,12 +5064,12 @@
                 showToast('멀티플레이는 PC에서 가장 안정적으로 동작합니다 (모바일은 실험 기능)');
             }
 
-            console.log('[showRoomList] fetching https://steep-moon-7816.sucksuck1114.workers.dev/api/rooms');
+            console.log('[showRoomList] fetching https://api.chosungking.com/api/rooms');
 
             // 방 목록 조회 함수 (재시도 로직 포함)
             async function fetchAndDisplayRooms(retryCount = 0) {
                 try {
-                    const response = await fetch('https://steep-moon-7816.sucksuck1114.workers.dev/api/rooms');
+                    const response = await fetch('https://api.chosungking.com/api/rooms');
                     
                     if (!response.ok) {
                         throw new Error(`HTTP ${response.status}`);
@@ -5215,7 +5215,7 @@
                 
                 // 🆕 제목, 게임 모드, 방장 정보를 서버에 전송 (방 생성과 동시에 방장 자동 입장)
                 console.log('[방 생성] 요청 시작:', { roomTitle, gameMode, playerId: multiplayerState.playerId, playerName: playerName?.substring(0, 10) });
-                const createResponse = await fetch('https://steep-moon-7816.sucksuck1114.workers.dev/api/create-room', { 
+                const createResponse = await fetch('https://api.chosungking.com/api/create-room', { 
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
@@ -5262,7 +5262,7 @@
                 updateStartScreenButtons();
                 
                 // 🚀 game-state 즉시 가져와서 슬롯 표시 (빈 슬롯 먼저 만들지 않음)
-                const roomResponse = await fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/game-state?roomId=${roomId}&playerId=${encodeURIComponent(multiplayerState.playerId || '')}`, {
+                const roomResponse = await fetch(`https://api.chosungking.com/api/game-state?roomId=${roomId}&playerId=${encodeURIComponent(multiplayerState.playerId || '')}`, {
                     cache: 'no-cache'
                 });
                 if (!roomResponse.ok) {
@@ -5376,7 +5376,7 @@
                 multiplayerState.isMultiplayer = true;
                 
                 // 🆕 worker.js에서 자동으로 탈락자 재입장 처리 (eliminatedPlayers 확인 후 player_rejoin 액션 전송)
-                const response = await fetch('https://steep-moon-7816.sucksuck1114.workers.dev/api/join-room', {
+                const response = await fetch('https://api.chosungking.com/api/join-room', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ roomId: roomId, playerId: multiplayerState.playerId, playerName: playerName })
@@ -5426,7 +5426,7 @@
                 let retryCount = 0;
                 while (retryCount < 3 && !roomData) {
                     try {
-                        const stateResponse = await fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/game-state?roomId=${roomId}&playerId=${encodeURIComponent(multiplayerState.playerId || '')}`, {
+                        const stateResponse = await fetch(`https://api.chosungking.com/api/game-state?roomId=${roomId}&playerId=${encodeURIComponent(multiplayerState.playerId || '')}`, {
                             cache: 'no-cache'
                         });
                         if (stateResponse.ok) {
@@ -5448,7 +5448,7 @@
                 }
                 if (!roomData) {
                     // 재시도 실패 시 마지막으로 한 번 더 시도
-                    const stateResponse = await fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/game-state?roomId=${roomId}&playerId=${encodeURIComponent(multiplayerState.playerId || '')}`, {
+                    const stateResponse = await fetch(`https://api.chosungking.com/api/game-state?roomId=${roomId}&playerId=${encodeURIComponent(multiplayerState.playerId || '')}`, {
                         cache: 'no-cache'
                     });
                     roomData = await stateResponse.json();
@@ -5697,7 +5697,7 @@
                 // 🆕 폴링 시작 후 즉시 한 번 더 슬롯 업데이트 (입장자 동기화 보장)
                 setTimeout(() => {
                     if (multiplayerState.isMultiplayer && multiplayerState.roomId) {
-                        fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/game-state?roomId=${multiplayerState.roomId}&playerId=${encodeURIComponent(multiplayerState.playerId || '')}`, {
+                        fetch(`https://api.chosungking.com/api/game-state?roomId=${multiplayerState.roomId}&playerId=${encodeURIComponent(multiplayerState.playerId || '')}`, {
                             cache: 'no-cache'
                         })
                         .then(r => r.json())
@@ -6023,7 +6023,7 @@
                     const controller = new AbortController();
                     const timeoutId = setTimeout(() => controller.abort(), 5000);
                     
-                    const response = await fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/game-state?roomId=${multiplayerState.roomId}&playerId=${encodeURIComponent(multiplayerState.playerId || '')}`, {
+                    const response = await fetch(`https://api.chosungking.com/api/game-state?roomId=${multiplayerState.roomId}&playerId=${encodeURIComponent(multiplayerState.playerId || '')}`, {
                         signal: controller.signal,
                         cache: 'no-cache' // 🆕 캐시 방지로 최신 데이터 보장
                     });
@@ -6409,7 +6409,7 @@
                     if (activePlayers.length <= 1 && !roomData.endTime) {
                         // 서버에 게임 종료 신호 전송 (방장만)
                         if (multiplayerState.isHost) {
-                            fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/game-state?roomId=${multiplayerState.roomId}`, {
+                            fetch(`https://api.chosungking.com/api/game-state?roomId=${multiplayerState.roomId}`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ action: 'end_game' })
@@ -6507,7 +6507,7 @@
                         try {
                             const controller = new AbortController();
                             const timeoutId = setTimeout(() => controller.abort(), 5000);
-                            const retryResponse = await fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/game-state?roomId=${multiplayerState.roomId}&playerId=${encodeURIComponent(multiplayerState.playerId || '')}`, {
+                            const retryResponse = await fetch(`https://api.chosungking.com/api/game-state?roomId=${multiplayerState.roomId}&playerId=${encodeURIComponent(multiplayerState.playerId || '')}`, {
                                 signal: controller.signal,
                                 cache: 'no-cache'
                             });
@@ -6861,7 +6861,7 @@
 
             try {
                 // 서버에 채팅 메시지 전송 (띄어쓰기 포함, playerId 포함)
-                await fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/chat?roomId=${multiplayerState.roomId}&playerId=${encodeURIComponent(multiplayerState.playerId || '')}`, {
+                await fetch(`https://api.chosungking.com/api/chat?roomId=${multiplayerState.roomId}&playerId=${encodeURIComponent(multiplayerState.playerId || '')}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -6963,7 +6963,7 @@
             if (now - lastChatPollAt < 1000) return;
             lastChatPollAt = now;
             try {
-                const response = await fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/chat?roomId=${multiplayerState.roomId}&playerId=${encodeURIComponent(multiplayerState.playerId || '')}`, {
+                const response = await fetch(`https://api.chosungking.com/api/chat?roomId=${multiplayerState.roomId}&playerId=${encodeURIComponent(multiplayerState.playerId || '')}`, {
                     cache: 'no-cache'
                 });
                 if (!response.ok) return;
@@ -7003,7 +7003,7 @@
                     };
                 });
                 
-                const scoreResponse = await fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/game-state?roomId=${multiplayerState.roomId}`, {
+                const scoreResponse = await fetch(`https://api.chosungking.com/api/game-state?roomId=${multiplayerState.roomId}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ playerId: multiplayerState.playerId, score: gameState.score, words: words })
@@ -7048,7 +7048,7 @@
 
                 // 🚀 방장은 players[0] (첫 입장자, 1등이 방장 되는 거 아님!)
 
-                await fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/game-state?roomId=${multiplayerState.roomId}`, {
+                await fetch(`https://api.chosungking.com/api/game-state?roomId=${multiplayerState.roomId}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(requestBody)
@@ -7061,7 +7061,7 @@
         async function sendGameEnd() {
             if (!multiplayerState.isMultiplayer || !multiplayerState.roomId) return;
             try {
-                await fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/game-state?roomId=${multiplayerState.roomId}`, {
+                await fetch(`https://api.chosungking.com/api/game-state?roomId=${multiplayerState.roomId}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action: 'end_game' })
@@ -7081,7 +7081,7 @@
             if (!multiplayerState.isMultiplayer || !multiplayerState.roomId) return;
 
             try {
-                await fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/chat?roomId=${multiplayerState.roomId}`, {
+                await fetch(`https://api.chosungking.com/api/chat?roomId=${multiplayerState.roomId}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -7188,7 +7188,7 @@
             }
             
             // 🚀 종료 모달 뜨기 전 현재 접속 중인 플레이어 확인 (브라우저 종료한 사람 제거)
-            const currentRoomData = await fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/game-state?roomId=${multiplayerState.roomId}`, {
+            const currentRoomData = await fetch(`https://api.chosungking.com/api/game-state?roomId=${multiplayerState.roomId}`, {
                 cache: 'no-cache'
             }).then(r => r.json()).catch(() => null);
             
@@ -7559,7 +7559,7 @@
             try {
                 // 🚀 게임 시작 전 현재 접속 중인 플레이어만 필터링 (브라우저 종료한 사람 제거)
                 // multiplayerState.players를 현재 접속 중인 플레이어로 업데이트
-                const currentRoomData = await fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/game-state?roomId=${multiplayerState.roomId}`, {
+                const currentRoomData = await fetch(`https://api.chosungking.com/api/game-state?roomId=${multiplayerState.roomId}`, {
                     cache: 'no-cache'
                 }).then(r => r.json()).catch(() => null);
                 
@@ -7612,7 +7612,7 @@
                         const controller = new AbortController();
                         const timeoutId = setTimeout(() => controller.abort(), 2000);
                         
-                        const response = await fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/game-state?roomId=${multiplayerState.roomId}`, {
+                        const response = await fetch(`https://api.chosungking.com/api/game-state?roomId=${multiplayerState.roomId}`, {
                             signal: controller.signal
                         });
                         
@@ -7715,7 +7715,7 @@
                     if (!document.querySelector('.mp-result-modal')) {
                         console.log('⚠️ 타임아웃! 강제로 결과 표시');
                         try {
-                            const response = await fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/game-state?roomId=${multiplayerState.roomId}`);
+                            const response = await fetch(`https://api.chosungking.com/api/game-state?roomId=${multiplayerState.roomId}`);
                             const roomData = await response.json();
                             showFinalResults(roomData);
                         } catch (e) {
@@ -7778,7 +7778,7 @@
                 
                 // 방 나가기 (대기실/종료 모달에서만 즉시 제거)
                 navigator.sendBeacon(
-                    'https://steep-moon-7816.sucksuck1114.workers.dev/api/leave-room',
+                    'https://api.chosungking.com/api/leave-room',
                     JSON.stringify({
                         roomId: multiplayerState.roomId,
                         playerId: multiplayerState.playerId
@@ -8125,7 +8125,7 @@
                     clearInterval(gameState.turnTimer);
                     
                     // 서버에 시간 초과 신호 전송
-                    fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/game-state?roomId=${multiplayerState.roomId}`, {
+                    fetch(`https://api.chosungking.com/api/game-state?roomId=${multiplayerState.roomId}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -8242,7 +8242,7 @@
                     console.log(`[나가기] 클라이언트 슬롯 즉시 제거: ${multiplayerState.playerId}, 남은 인원: ${multiplayerState.players.length}명`);
                     
                     // 🆕 나간 방 정보 저장 (5분간 재입장 불가)
-                    const roomData = await fetch(`https://steep-moon-7816.sucksuck1114.workers.dev/api/game-state?roomId=${multiplayerState.roomId}`).then(r => r.json()).catch(() => null);
+                    const roomData = await fetch(`api.chosungking.com/api/game-state?roomId=${multiplayerState.roomId}`).then(r => r.json()).catch(() => null);
                     if (roomData) {
                         const leftRoomInfo = {
                             roomId: multiplayerState.roomId,
@@ -8258,7 +8258,7 @@
                         }
                     }
 
-                    await fetch('https://steep-moon-7816.sucksuck1114.workers.dev/api/leave-room', {
+                    await fetch('https://api.chosungking.com/api/leave-room', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
