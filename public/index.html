@@ -1071,14 +1071,14 @@
                 filter: blur(0);
             }
             45% {
-                opacity: 0.38;
+                opacity: 0.72;
                 transform: translateY(-26px) scale(1.02);
-                filter: blur(1.6px);
+                filter: blur(0.9px);
             }
             100% {
                 opacity: 0;
                 transform: translateY(-120px) scale(1.05);
-                filter: blur(4.2px);
+                filter: blur(2.4px);
             }
         }
         
@@ -4233,9 +4233,10 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                 const vh = vv && vv.height ? vv.height : window.innerHeight;
                 const offsetTop = vv && vv.offsetTop ? vv.offsetTop : 0;
                 // ✅ 기종 무관 기준점: 입력창(직사각형) 하단에서 출발
-                const inputSection = document.querySelector('.input-section') || document.getElementById('wordInput');
-                const inputRect = inputSection && inputSection.getBoundingClientRect ? inputSection.getBoundingClientRect() : null;
-                const anchorY = inputRect ? Math.round(inputRect.bottom + offsetTop + 6) : Math.round(offsetTop + vh * 0.30);
+                const inputEl = document.getElementById('wordInput');
+                const inputRect = inputEl && inputEl.getBoundingClientRect ? inputEl.getBoundingClientRect() : null;
+                // 입력창 바닥선 기준(확인 버튼 포함 컨테이너 기준이 아님)
+                const anchorY = inputRect ? Math.round(inputRect.bottom + offsetTop - 8) : Math.round(offsetTop + vh * 0.28);
                 const minY = Math.round(offsetTop + 16);
                 const maxY = Math.round(offsetTop + vh - 16);
                 const targetY = Math.max(minY, Math.min(maxY, anchorY));
