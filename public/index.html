@@ -1077,7 +1077,7 @@
             }
             100% {
                 opacity: 0;
-                transform: translateY(-80px) scale(1.05);
+                transform: translateY(-120px) scale(1.05);
                 filter: blur(4.2px);
             }
         }
@@ -4232,11 +4232,13 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                 const vv = window.visualViewport;
                 const vh = vv && vv.height ? vv.height : window.innerHeight;
                 const offsetTop = vv && vv.offsetTop ? vv.offsetTop : 0;
-                // 키보드가 화면을 크게 가리는 구형폰에서도 확실히 보이도록 더 위로 배치
-                const desiredY = Math.round(offsetTop + vh * 0.30);
+                // ✅ 기종 무관 기준점: 입력창(직사각형) 하단에서 출발
+                const inputSection = document.querySelector('.input-section') || document.getElementById('wordInput');
+                const inputRect = inputSection && inputSection.getBoundingClientRect ? inputSection.getBoundingClientRect() : null;
+                const anchorY = inputRect ? Math.round(inputRect.bottom + offsetTop + 6) : Math.round(offsetTop + vh * 0.30);
                 const minY = Math.round(offsetTop + 16);
                 const maxY = Math.round(offsetTop + vh - 16);
-                const targetY = Math.max(minY, Math.min(maxY, desiredY));
+                const targetY = Math.max(minY, Math.min(maxY, anchorY));
                 toast.style.top = targetY + 'px';
             } catch (e) {}
 
@@ -4251,7 +4253,7 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                 try {
                     if (toast && toast.parentNode) toast.parentNode.removeChild(toast);
                 } catch (e) {}
-            }, 1150);
+            }, 1350);
         }
         
         // 🆕 턴제 모드용 토스트 함수 (PC에서도 표시)
