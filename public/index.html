@@ -165,6 +165,17 @@
             animation: crownBounce 2s ease-in-out infinite;
         }
 
+        .mobile-start-title {
+            display: none;
+            font-family: 'Do Hyeon', sans-serif;
+            font-size: 3em;
+            font-weight: bold;
+            margin-bottom: 14px;
+            color: #fd79a8;
+            text-shadow: 3px 3px 0px rgba(253, 203, 110, 0.5);
+            animation: crownBounce 2s ease-in-out infinite;
+        }
+
         @keyframes crownBounce {
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-10px); }
@@ -194,6 +205,25 @@
             text-align: center;
         }
 
+        .mobile-start-extra .mobile-scorebox {
+            background: #fff3b0;
+            border: 2px solid #ffeaa7;
+            border-radius: 18px;
+            padding: 14px 14px 12px;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+            margin: 0 auto 14px;
+            max-width: 520px;
+        }
+
+        .mobile-start-extra .mobile-instruction {
+            font-family: 'Do Hyeon', sans-serif;
+            font-size: 1.55em;
+            color: #2d3436;
+            line-height: 1.25;
+            letter-spacing: -0.6px;
+            margin-bottom: 10px;
+        }
+
         .mobile-start-extra .mobile-scoreline {
             font-size: 0.95em;
             color: #2d3436;
@@ -218,16 +248,6 @@
             font-size: 0.92em;
             color: #636e72;
             letter-spacing: -0.2px;
-        }
-
-        .mobile-start-extra .mobile-pc-teaser .pc {
-            color: #0984e3;
-            font-weight: 800;
-        }
-
-        .mobile-start-extra .mobile-pc-teaser .mp {
-            color: #e84393;
-            font-weight: 800;
         }
 
         .mobile-start-extra .mobile-domain {
@@ -3584,24 +3604,26 @@
         <div id="gameStartSection" class="game-start-section">
             <div class="start-crown">👑</div>
             <div class="start-title">초성킹</div>
+
+            <div class="mobile-start-title" id="mobileStartTitle">👑 초성킹</div>
             
             <div class="start-instruction">
                 긴 단어일수록 대박!<br>특별초성은 보너스!<br>준비되셨습니까?
             </div>
 
             <div class="mobile-start-extra" id="mobileStartExtra">
-                <div class="start-instruction" style="margin-bottom: 0;">
-                    제시된 초성으로 순서 상관없이<br>맘껏 단어를 만드세요!
+                <div class="mobile-scorebox">
+                    <div class="mobile-instruction">
+                        제시된 초성으로 순서 상관없이<br>맘껏 단어를 만드세요!
+                    </div>
+                    <div class="mobile-scoreline">
+                        2글자: 10점 / 3글자: 100점<br>
+                        4글자: 400점 / 5글자: 900점<br>
+                        <span class="special">✨ 특별초성(ㄲㄸㅃㅆㅉㅊㅋㅌㅍ) 각 +20점</span>
+                    </div>
                 </div>
-                <div class="mobile-scoreline">
-                    2글자: 10점 / 3글자: 100점<br>
-                    4글자: 400점 / 5글자: 900점<br>
-                    <span class="special">✨ 특별초성(ㄲㄸㅃㅆㅉㅊㅋㅌㅍ) 각 +20점</span>
-                </div>
-                <div class="mobile-hook">같이 초성배틀 뜨실 분?</div>
-                <div class="mobile-pc-teaser">
-                    <span class="pc">PC</span>에서는 짜릿한 <span class="mp">멀티플레이</span>가 가능해요. 👥
-                </div>
+                <div class="mobile-hook">"같이 초성배틀 뜨실 분?"</div>
+                <div class="mobile-pc-teaser">PC에서는 짜릿한 멀티플레이가 가능해요.</div>
                 <div class="mobile-domain">chosungking.com</div>
             </div>
 
@@ -5044,20 +5066,29 @@
         function updateStartScreenForMobile() {
             const isMobile = !!(gameState && gameState.isMobile);
             const extra = document.getElementById('mobileStartExtra');
+            const mobileTitle = document.getElementById('mobileStartTitle');
             const startInstruction = document.querySelector('#gameStartSection .start-instruction');
             const bestScoreEl = document.getElementById('bestScoreDisplay');
             const togetherBtn = document.querySelector('#gameModeButtons .mode-start-btn.together');
+            const crown = document.querySelector('#gameStartSection .start-crown');
+            const pcTitle = document.querySelector('#gameStartSection .start-title');
 
             if (isMobile) {
                 if (extra) extra.style.display = 'block';
+                if (mobileTitle) mobileTitle.style.display = 'block';
                 if (startInstruction) startInstruction.style.display = 'none';
                 if (togetherBtn) togetherBtn.style.display = 'none';
                 if (bestScoreEl) bestScoreEl.textContent = `최고기록 : ${gameState.bestScore}점`;
+                if (crown) crown.style.display = 'none';
+                if (pcTitle) pcTitle.style.display = 'none';
             } else {
                 if (extra) extra.style.display = 'none';
+                if (mobileTitle) mobileTitle.style.display = 'none';
                 if (startInstruction) startInstruction.style.display = '';
                 if (togetherBtn) togetherBtn.style.display = '';
                 if (bestScoreEl) bestScoreEl.textContent = `🏆 최고 기록: ${gameState.bestScore}점`;
+                if (crown) crown.style.display = '';
+                if (pcTitle) pcTitle.style.display = '';
             }
         }
 
