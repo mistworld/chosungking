@@ -1007,20 +1007,44 @@
         /* 토스트 메시지 - 모바일용 */
         .toast-message {
             position: fixed;
-            bottom: 160px; /* 단어 입력창 위, 단어 쌓이는 영역 살짝 침범 가능 */
-            right: 18px;
-            left: auto;
-            transform: none;
-            background: linear-gradient(135deg, #fd79a8, #fdcb6e);
-            color: white;
-            padding: 12px 20px;
-            border-radius: 15px;
-            font-weight: bold;
+            top: 40vh;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.92);
+            color: #2d3436;
+            padding: 14px 18px;
+            border-radius: 18px;
+            font-weight: 800;
             text-align: center;
+            border: 2px solid rgba(253, 203, 110, 0.9);
             z-index: 20000;
-            animation: toastPop 0.8s ease-in-out;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-            max-width: calc(100vw - 36px);
+            animation: toastSmoke 1.6s ease-out forwards;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+            max-width: calc(100vw - 40px);
+            min-width: min(320px, calc(100vw - 40px));
+            backdrop-filter: blur(8px);
+        }
+
+        .toast-message .toast-text {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-size: 1.35em;
+            letter-spacing: -0.4px;
+        }
+
+        .toast-message .toast-text .toast-emoji {
+            font-size: 2.1em;
+            line-height: 1;
+        }
+
+        .toast-message .toast-score {
+            margin-top: 6px;
+            font-size: 1.55em;
+            font-weight: 900;
+            color: #e84393;
+            text-shadow: 0 1px 0 rgba(255,255,255,0.6);
         }
 
         #toastRoot {
@@ -1030,11 +1054,27 @@
             pointer-events: none;
         }
 
-        @keyframes toastPop {
-            0% { opacity: 0; transform: translateY(6px) scale(0.92); filter: blur(1px) saturate(1.2); }
-            40% { opacity: 1; transform: translateY(0) scale(1.03); filter: blur(0) saturate(1.35); }
-            70% { opacity: 1; transform: translateY(-2px) scale(1.0); filter: blur(0) saturate(1.2); }
-            100% { opacity: 0; transform: translateY(-10px) scale(0.98); filter: blur(1px) saturate(1.0); }
+        @keyframes toastSmoke {
+            0% {
+                opacity: 0;
+                transform: translateX(-50%) translateY(14px) scale(0.92);
+                filter: blur(1px);
+            }
+            18% {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0) scale(1.02);
+                filter: blur(0);
+            }
+            70% {
+                opacity: 0.95;
+                transform: translateX(-50%) translateY(-18px) scale(1.02);
+                filter: blur(0.2px);
+            }
+            100% {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-60px) scale(1.06);
+                filter: blur(2px);
+            }
         }
         
         /* 멀티플레이 토스트 메시지 (PC용) */
@@ -3972,6 +4012,11 @@ Tip) 세글자 이상 + 특별초성 활용하기!
             isMobile: window.innerWidth <= 768
         };
 
+        // 콘솔/디버깅을 위해 노출 (PC 기능에 영향 없음)
+        try {
+            window.gameState = gameState;
+        } catch (e) {}
+
         function detectMobile() {
             try {
                 const ua = (navigator.userAgent || '').toLowerCase();
@@ -3982,6 +4027,10 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                 return window.innerWidth <= 768;
             }
         }
+
+        try {
+            window.detectMobile = detectMobile;
+        } catch (e) {}
 
         // 화면 회전/리사이즈에서 모바일 플래그 갱신
         try {
@@ -4170,7 +4219,7 @@ Tip) 세글자 이상 + 특별초성 활용하기!
 
             const toast = document.createElement('div');
             toast.className = 'toast-message';
-            toast.innerHTML = `<div class="toast-text">${emoji} ${message}</div><div class="toast-score">+${score}점</div>`;
+            toast.innerHTML = `<div class="toast-text"><span class="toast-emoji">${emoji}</span><span class="toast-msg">${message}</span></div><div class="toast-score">+${score}점</div>`;
             root.appendChild(toast);
 
             // 디버그: 토스트 실행 여부 확인용 (배포 확인 후 제거 가능)
@@ -4184,7 +4233,7 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                 try {
                     if (toast && toast.parentNode) toast.parentNode.removeChild(toast);
                 } catch (e) {}
-            }, 1600);
+            }, 1700);
         }
         
         // 🆕 턴제 모드용 토스트 함수 (PC에서도 표시)
