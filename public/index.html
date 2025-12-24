@@ -1023,6 +1023,13 @@
             max-width: calc(100vw - 36px);
         }
 
+        #toastRoot {
+            position: fixed;
+            inset: 0;
+            z-index: 2147483647;
+            pointer-events: none;
+        }
+
         @keyframes toastPop {
             0% { opacity: 0; transform: translateY(6px) scale(0.92); filter: blur(1px) saturate(1.2); }
             40% { opacity: 1; transform: translateY(0) scale(1.03); filter: blur(0) saturate(1.35); }
@@ -3778,17 +3785,33 @@
             <div class="settings-title">⚙️ 설정</div>
             <div class="settings-item">
                 <div class="settings-label">🎵 BGM</div>
+                <input id="bgmVolume" class="settings-slider" type="range" min="0" max="100" value="30" oninput="setBgmVolumeFromUI(this.value)" />
                 <button id="modalBgmBtn" class="settings-toggle active" onclick="toggleModalBGM()">ON</button>
             </div>
             <div class="settings-item">
                 <div class="settings-label">🔊 효과음</div>
+                <input id="sfxVolume" class="settings-slider" type="range" min="0" max="100" value="70" oninput="setSfxVolumeFromUI(this.value)" />
                 <button id="modalSfxBtn" class="settings-toggle active" onclick="toggleModalSFX()">ON</button>
             </div>
             <div class="settings-item">
                 <div class="settings-label">⌨️ 타건음</div>
+                <input id="typingVolume" class="settings-slider" type="range" min="0" max="100" value="60" oninput="setTypingVolumeFromUI(this.value)" />
                 <button id="modalTypingBtn" class="settings-toggle active" onclick="toggleModalTyping()">ON</button>
             </div>
             <button class="settings-newgame-btn" onclick="resetGameFromSettings()">🔄 새게임</button>
+            <button class="settings-guide-btn" onclick="toggleSettingsGuide()">📘 공략법</button>
+            <div id="settingsGuide" class="settings-guide hidden">
+                <div class="settings-guide-text">
+                    제시된 초성만으로 순서 상관없이 단어를 만들어보세요.<br>
+                    Tip) 세글자 이상 + 특별초성 활용하기!<br><br>
+                    2글자: 10점<br>
+                    3글자: 100점<br>
+                    4글자: 400점<br>
+                    5글자: 900점<br><br>
+                    특별초성ㄲㄸㅃㅆㅉㅊㅋㅌㅍ<br>
+                    : 20점 추가 보너스
+                </div>
+            </div>
             <button class="settings-close-btn" onclick="closeSettings()">닫기</button>
         </div>
     </div>
@@ -3892,6 +3915,9 @@
             bgmEnabled: true,
             sfxEnabled: true,
             typingEnabled: true,
+            bgmVolume: 0.3,
+            sfxVolume: 0.7,
+            typingVolume: 0.6,
             tickSoundPlaying: false,
             bestScore: 0,
             roundCount: 0,
@@ -4064,32 +4090,47 @@
                 showTurnModeToast(emoji, message);
                 return;
             }
-            
+
+            let root = document.getElementById('toastRoot');
+            if (!root) {
+                root = document.createElement('div');
+                root.id = 'toastRoot';
+                document.body.appendChild(root);
+            }
+
             // 이전 토스트 제거
-            const oldToast = document.querySelector('.toast-message');
+            const oldToast = root.querySelector('.toast-message');
             if (oldToast) oldToast.remove();
-            
+
             const toast = document.createElement('div');
             toast.className = 'toast-message';
             toast.innerHTML = `<div class="toast-text">${emoji} ${message}</div><div class="toast-score">+${score}점</div>`;
-            document.body.appendChild(toast);
+            root.appendChild(toast);
 
             // 디버그: 토스트 실행 여부 확인용 (배포 확인 후 제거 가능)
             try {
                 toast.setAttribute('data-toast', '1');
+                window.__ck_lastToastAt = Date.now();
             } catch (e) {}
-            
+
             setTimeout(() => {
-                if (toast.parentNode) {
-                    toast.parentNode.removeChild(toast);
-                }
-            }, 800);
+                try {
+                    if (toast && toast.parentNode) toast.parentNode.removeChild(toast);
+                } catch (e) {}
+            }, 900);
         }
         
         // 🆕 턴제 모드용 토스트 함수 (PC에서도 표시)
         function showTurnModeToast(emoji, message) {
             // 이전 토스트 제거
-            const oldToast = document.querySelector('.toast-message');
+            let root = document.getElementById('toastRoot');
+            if (!root) {
+                root = document.createElement('div');
+                root.id = 'toastRoot';
+                document.body.appendChild(root);
+            }
+
+            const oldToast = root.querySelector('.toast-message');
             if (oldToast) oldToast.remove();
             
             const toast = document.createElement('div');
@@ -4100,7 +4141,7 @@
                 displayEmoji = `<span style="color: #6bff6b; filter: hue-rotate(120deg) saturate(1.5) brightness(1.2);">${emoji}</span>`;
             }
             toast.innerHTML = `<div class="toast-text">${displayEmoji} ${message}</div>`;
-            document.body.appendChild(toast);
+            root.appendChild(toast);
             
             setTimeout(() => {
                 if (toast.parentNode) {
@@ -4815,6 +4856,9 @@
             const bgmBtn = document.getElementById('modalBgmBtn');
             const sfxBtn = document.getElementById('modalSfxBtn');
             const typingBtn = document.getElementById('modalTypingBtn');
+            const bgmSlider = document.getElementById('bgmVolume');
+            const sfxSlider = document.getElementById('sfxVolume');
+            const typingSlider = document.getElementById('typingVolume');
             
             bgmBtn.textContent = gameState.bgmEnabled ? 'ON' : 'OFF';
             bgmBtn.classList.toggle('active', gameState.bgmEnabled);
@@ -4824,6 +4868,35 @@
             
             typingBtn.textContent = gameState.typingEnabled ? 'ON' : 'OFF';
             typingBtn.classList.toggle('active', gameState.typingEnabled);
+
+            if (bgmSlider) bgmSlider.value = Math.round((gameState.bgmVolume ?? 0.3) * 100).toString();
+            if (sfxSlider) sfxSlider.value = Math.round((gameState.sfxVolume ?? 0.7) * 100).toString();
+            if (typingSlider) typingSlider.value = Math.round((gameState.typingVolume ?? 0.6) * 100).toString();
+        }
+
+        function setBgmVolumeFromUI(v) {
+            const vol = Math.max(0, Math.min(1, (parseInt(v, 10) || 0) / 100));
+            gameState.bgmVolume = vol;
+            try { localStorage.setItem('ck_bgmVolume', String(vol)); } catch (e) {}
+            if (bgmAudio) bgmAudio.volume = vol;
+        }
+
+        function setSfxVolumeFromUI(v) {
+            const vol = Math.max(0, Math.min(1, (parseInt(v, 10) || 0) / 100));
+            gameState.sfxVolume = vol;
+            try { localStorage.setItem('ck_sfxVolume', String(vol)); } catch (e) {}
+        }
+
+        function setTypingVolumeFromUI(v) {
+            const vol = Math.max(0, Math.min(1, (parseInt(v, 10) || 0) / 100));
+            gameState.typingVolume = vol;
+            try { localStorage.setItem('ck_typingVolume', String(vol)); } catch (e) {}
+        }
+
+        function toggleSettingsGuide() {
+            const guide = document.getElementById('settingsGuide');
+            if (!guide) return;
+            guide.classList.toggle('hidden');
         }
 
         function toggleModalBGM() {
@@ -4927,7 +5000,7 @@
                 if (pooled && pooled.pool && pooled.pool.length > 0) {
                     const a = pooled.pool[pooled.idx % pooled.pool.length];
                     pooled.idx = (pooled.idx + 1) % pooled.pool.length;
-                    a.volume = volume;
+                    a.volume = Math.max(0, Math.min(1, volume * (gameState.sfxVolume ?? 1)));
                     try { a.currentTime = 0; } catch (e) {}
                     a.play().catch(() => {});
                     return;
@@ -4941,7 +5014,7 @@
                     sfxCache[file] = base;
                 }
                 const audio = sfxCache[file].cloneNode(true);
-                audio.volume = volume;
+                audio.volume = Math.max(0, Math.min(1, volume * (gameState.sfxVolume ?? 1)));
                 audio.currentTime = 0;
                 audio.play().catch(() => {});
             } catch (e) {}
@@ -4959,7 +5032,7 @@
                     bgmAudio = new Audio('turn_background.mp3');
                     bgmAudio.preload = 'auto';
                     bgmAudio.loop = true;
-                    bgmAudio.volume = 0.3;
+                    bgmAudio.volume = (gameState.bgmVolume ?? 0.3);
                     bgmAudio.play().catch(e => {});
                     return;
                 }
@@ -4973,7 +5046,7 @@
                 bgmAudio = new Audio(bgmFile);
                 bgmAudio.preload = 'auto';
                 bgmAudio.loop = true;
-                bgmAudio.volume = bgmFile === 'background2.mp3' ? 0.4 : 0.3;
+                bgmAudio.volume = (gameState.bgmVolume ?? (bgmFile === 'background2.mp3' ? 0.4 : 0.3));
                 bgmAudio.play().catch(e => {});
             } catch (e) {}
         }
