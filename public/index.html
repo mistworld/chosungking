@@ -183,8 +183,59 @@
             font-family: 'Do Hyeon', sans-serif;
             font-size: 1.3em;
             color: #636e72;
-            margin-bottom: 20px;
+            text-align: center;
+            margin-bottom: 30px;
             line-height: 1.6;
+        }
+
+        .mobile-start-extra {
+            display: none;
+            margin-top: 18px;
+            text-align: center;
+        }
+
+        .mobile-start-extra .mobile-scoreline {
+            font-size: 0.95em;
+            color: #2d3436;
+            line-height: 1.55;
+        }
+
+        .mobile-start-extra .mobile-scoreline .special {
+            color: #fd79a8;
+            font-weight: 800;
+        }
+
+        .mobile-start-extra .mobile-hook {
+            margin-top: 16px;
+            font-family: 'Do Hyeon', sans-serif;
+            font-size: 1.35em;
+            color: #2d3436;
+            letter-spacing: -0.5px;
+        }
+
+        .mobile-start-extra .mobile-pc-teaser {
+            margin-top: 6px;
+            font-size: 0.92em;
+            color: #636e72;
+            letter-spacing: -0.2px;
+        }
+
+        .mobile-start-extra .mobile-pc-teaser .pc {
+            color: #0984e3;
+            font-weight: 800;
+        }
+
+        .mobile-start-extra .mobile-pc-teaser .mp {
+            color: #e84393;
+            font-weight: 800;
+        }
+
+        .mobile-start-extra .mobile-domain {
+            margin-top: 4px;
+            font-size: 0.82em;
+            opacity: 0.8;
+            color: #2d3436;
+            letter-spacing: 0.2px;
         }
 
         .score-guide {
@@ -3538,6 +3589,22 @@
                 긴 단어일수록 대박!<br>특별초성은 보너스!<br>준비되셨습니까?
             </div>
 
+            <div class="mobile-start-extra" id="mobileStartExtra">
+                <div class="start-instruction" style="margin-bottom: 0;">
+                    제시된 초성으로 순서 상관없이<br>맘껏 단어를 만드세요!
+                </div>
+                <div class="mobile-scoreline">
+                    2글자: 10점 / 3글자: 100점<br>
+                    4글자: 400점 / 5글자: 900점<br>
+                    <span class="special">✨ 특별초성(ㄲㄸㅃㅆㅉㅊㅋㅌㅍ) 각 +20점</span>
+                </div>
+                <div class="mobile-hook">같이 초성배틀 뜨실 분?</div>
+                <div class="mobile-pc-teaser">
+                    <span class="pc">PC</span>에서는 짜릿한 <span class="mp">멀티플레이</span>가 가능해요. 👥
+                </div>
+                <div class="mobile-domain">chosungking.com</div>
+            </div>
+
             <div class="score-guide" style="display: none;">
                     <div class="score-guide-compact">
                         <div class="score-item">2글자: 10점</div>
@@ -3556,7 +3623,7 @@
             <!-- 게임 모드 선택 버튼 -->
             <div class="game-mode-buttons" id="gameModeButtons">
                 <button class="mode-start-btn solo" onclick="safeCall('startGame')">
-                    혼자하기
+                    게임시작
                 </button>
                 <button class="mode-start-btn together" onclick="safeCall('showRoomList')">
                     함께하기
@@ -4974,9 +5041,32 @@
             document.getElementById('currentBestScore').textContent = gameState.bestScore;
         }
 
+        function updateStartScreenForMobile() {
+            const isMobile = !!(gameState && gameState.isMobile);
+            const extra = document.getElementById('mobileStartExtra');
+            const startInstruction = document.querySelector('#gameStartSection .start-instruction');
+            const bestScoreEl = document.getElementById('bestScoreDisplay');
+            const togetherBtn = document.querySelector('#gameModeButtons .mode-start-btn.together');
+
+            if (isMobile) {
+                if (extra) extra.style.display = 'block';
+                if (startInstruction) startInstruction.style.display = 'none';
+                if (togetherBtn) togetherBtn.style.display = 'none';
+                if (bestScoreEl) bestScoreEl.textContent = `최고기록 : ${gameState.bestScore}점`;
+            } else {
+                if (extra) extra.style.display = 'none';
+                if (startInstruction) startInstruction.style.display = '';
+                if (togetherBtn) togetherBtn.style.display = '';
+                if (bestScoreEl) bestScoreEl.textContent = `🏆 최고 기록: ${gameState.bestScore}점`;
+            }
+        }
+
         // 🆕 전역 함수로 노출 (HTML onclick에서 사용)
         document.addEventListener('DOMContentLoaded', () => {
             loadBestScore();
+
+            // 모바일 시작 화면 전용 레이아웃 적용
+            updateStartScreenForMobile();
             
             // 🆕 시작 화면 버튼 초기화
             setTimeout(() => {
