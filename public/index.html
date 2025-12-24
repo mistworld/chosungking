@@ -1011,7 +1011,7 @@
             right: 16px;
             left: auto;
             transform: none;
-            background: rgba(255, 255, 255, 0.45);
+            background: rgba(255, 255, 255, 0.03);
             color: #2d3436;
             padding: 10px 12px;
             border-radius: 999px;
@@ -1070,15 +1070,15 @@
                 transform: translateY(0) scale(1.02);
                 filter: blur(0);
             }
-            70% {
-                opacity: 0.75;
-                transform: translateY(-22px) scale(1.02);
-                filter: blur(0.2px);
+            45% {
+                opacity: 0.38;
+                transform: translateY(-26px) scale(1.02);
+                filter: blur(1.6px);
             }
             100% {
                 opacity: 0;
                 transform: translateY(-80px) scale(1.05);
-                filter: blur(2.8px);
+                filter: blur(4.2px);
             }
         }
         
@@ -4233,7 +4233,7 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                 const vh = vv && vv.height ? vv.height : window.innerHeight;
                 const offsetTop = vv && vv.offsetTop ? vv.offsetTop : 0;
                 // 키보드가 화면을 크게 가리는 구형폰에서도 확실히 보이도록 더 위로 배치
-                const desiredY = Math.round(offsetTop + vh * 0.22);
+                const desiredY = Math.round(offsetTop + vh * 0.30);
                 const minY = Math.round(offsetTop + 16);
                 const maxY = Math.round(offsetTop + vh - 16);
                 const targetY = Math.max(minY, Math.min(maxY, desiredY));
