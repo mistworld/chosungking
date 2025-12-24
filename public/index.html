@@ -1008,40 +1008,45 @@
         .toast-message {
             position: fixed;
             top: 40vh;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.92);
+            right: 16px;
+            left: auto;
+            transform: none;
+            background: rgba(255, 255, 255, 0.95);
             color: #2d3436;
-            padding: 14px 18px;
-            border-radius: 18px;
+            padding: 16px 18px;
+            border-radius: 999px;
             font-weight: 800;
             text-align: center;
-            border: 2px solid rgba(253, 203, 110, 0.9);
             z-index: 20000;
             animation: toastSmoke 1.6s ease-out forwards;
             box-shadow: 0 10px 30px rgba(0,0,0,0.18);
-            max-width: calc(100vw - 40px);
-            min-width: min(320px, calc(100vw - 40px));
+            width: min(240px, calc(100vw - 32px));
             backdrop-filter: blur(8px);
         }
 
         .toast-message .toast-text {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            font-size: 1.35em;
-            letter-spacing: -0.4px;
+            display: block;
+            font-size: 1.5em;
+            letter-spacing: -0.6px;
         }
 
         .toast-message .toast-text .toast-emoji {
-            font-size: 2.1em;
-            line-height: 1;
+            display: block;
+            font-size: 1.5em;
+            line-height: 1.05;
+            margin-top: 6px;
+        }
+
+        .toast-message .toast-text .toast-msg {
+            display: block;
+            font-size: 1.5em;
+            line-height: 1.15;
+            margin-top: 4px;
+            word-break: keep-all;
         }
 
         .toast-message .toast-score {
-            margin-top: 6px;
-            font-size: 1.55em;
+            font-size: 2em;
             font-weight: 900;
             color: #e84393;
             text-shadow: 0 1px 0 rgba(255,255,255,0.6);
@@ -1057,22 +1062,22 @@
         @keyframes toastSmoke {
             0% {
                 opacity: 0;
-                transform: translateX(-50%) translateY(14px) scale(0.92);
+                transform: translateY(14px) scale(0.92);
                 filter: blur(1px);
             }
             18% {
                 opacity: 1;
-                transform: translateX(-50%) translateY(0) scale(1.02);
+                transform: translateY(0) scale(1.02);
                 filter: blur(0);
             }
             70% {
                 opacity: 0.95;
-                transform: translateX(-50%) translateY(-18px) scale(1.02);
+                transform: translateY(-18px) scale(1.02);
                 filter: blur(0.2px);
             }
             100% {
                 opacity: 0;
-                transform: translateX(-50%) translateY(-60px) scale(1.06);
+                transform: translateY(-60px) scale(1.06);
                 filter: blur(2px);
             }
         }
@@ -4219,8 +4224,21 @@ Tip) 세글자 이상 + 특별초성 활용하기!
 
             const toast = document.createElement('div');
             toast.className = 'toast-message';
-            toast.innerHTML = `<div class="toast-text"><span class="toast-emoji">${emoji}</span><span class="toast-msg">${message}</span></div><div class="toast-score">+${score}점</div>`;
+            toast.innerHTML = `<div class="toast-score">+${score}점</div><div class="toast-text"><span class="toast-emoji">${emoji}</span><span class="toast-msg">${message}</span></div>`;
             root.appendChild(toast);
+
+            // 키보드/기기별 뷰포트에 맞춰 위치 자동 보정
+            try {
+                const vv = window.visualViewport;
+                const vh = vv && vv.height ? vv.height : window.innerHeight;
+                const offsetTop = vv && vv.offsetTop ? vv.offsetTop : 0;
+                // 키보드가 화면을 크게 가리는 구형폰에서도 확실히 보이도록 더 위로 배치
+                const desiredY = Math.round(offsetTop + vh * 0.28);
+                const minY = Math.round(offsetTop + 16);
+                const maxY = Math.round(offsetTop + vh - 16);
+                const targetY = Math.max(minY, Math.min(maxY, desiredY));
+                toast.style.top = targetY + 'px';
+            } catch (e) {}
 
             // 디버그: 토스트 실행 여부 확인용 (배포 확인 후 제거 가능)
             try {
