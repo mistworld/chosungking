@@ -1011,42 +1011,42 @@
             right: 16px;
             left: auto;
             transform: none;
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(255, 255, 255, 0.45);
             color: #2d3436;
-            padding: 16px 18px;
+            padding: 10px 12px;
             border-radius: 999px;
             font-weight: 800;
             text-align: center;
             z-index: 20000;
-            animation: toastSmoke 1.6s ease-out forwards;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.18);
-            width: min(240px, calc(100vw - 32px));
+            animation: toastSmoke 1.05s ease-out forwards;
+            box-shadow: 0 8px 22px rgba(0,0,0,0.14);
+            width: min(190px, calc(100vw - 32px));
             backdrop-filter: blur(8px);
         }
 
         .toast-message .toast-text {
             display: block;
-            font-size: 1.5em;
+            font-size: 1.05em;
             letter-spacing: -0.6px;
         }
 
         .toast-message .toast-text .toast-emoji {
             display: block;
-            font-size: 1.5em;
+            font-size: 1.25em;
             line-height: 1.05;
-            margin-top: 6px;
+            margin-top: 4px;
         }
 
         .toast-message .toast-text .toast-msg {
             display: block;
-            font-size: 1.5em;
+            font-size: 0.98em;
             line-height: 1.15;
-            margin-top: 4px;
+            margin-top: 2px;
             word-break: keep-all;
         }
 
         .toast-message .toast-score {
-            font-size: 2em;
+            font-size: 1.7em;
             font-weight: 900;
             color: #e84393;
             text-shadow: 0 1px 0 rgba(255,255,255,0.6);
@@ -1062,7 +1062,7 @@
         @keyframes toastSmoke {
             0% {
                 opacity: 0;
-                transform: translateY(14px) scale(0.92);
+                transform: translateY(10px) scale(0.92);
                 filter: blur(1px);
             }
             18% {
@@ -1071,14 +1071,14 @@
                 filter: blur(0);
             }
             70% {
-                opacity: 0.95;
-                transform: translateY(-18px) scale(1.02);
+                opacity: 0.75;
+                transform: translateY(-22px) scale(1.02);
                 filter: blur(0.2px);
             }
             100% {
                 opacity: 0;
-                transform: translateY(-60px) scale(1.06);
-                filter: blur(2px);
+                transform: translateY(-80px) scale(1.05);
+                filter: blur(2.8px);
             }
         }
         
@@ -4233,7 +4233,7 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                 const vh = vv && vv.height ? vv.height : window.innerHeight;
                 const offsetTop = vv && vv.offsetTop ? vv.offsetTop : 0;
                 // 키보드가 화면을 크게 가리는 구형폰에서도 확실히 보이도록 더 위로 배치
-                const desiredY = Math.round(offsetTop + vh * 0.28);
+                const desiredY = Math.round(offsetTop + vh * 0.22);
                 const minY = Math.round(offsetTop + 16);
                 const maxY = Math.round(offsetTop + vh - 16);
                 const targetY = Math.max(minY, Math.min(maxY, desiredY));
@@ -4251,7 +4251,7 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                 try {
                     if (toast && toast.parentNode) toast.parentNode.removeChild(toast);
                 } catch (e) {}
-            }, 1700);
+            }, 1150);
         }
         
         // 🆕 턴제 모드용 토스트 함수 (PC에서도 표시)
@@ -8718,4 +8718,3 @@ Tip) 세글자 이상 + 특별초성 활용하기!
     </script>
 </body>
 </html>
-
