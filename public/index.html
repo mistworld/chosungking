@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>초성왕</title>
+    <title>초성킹</title>
     <!-- Force deploy: 2024-12-10-서버시간동기화수정-재배포-확인 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -922,23 +922,25 @@
         .toast-message {
             position: fixed;
             bottom: 160px; /* 단어 입력창 위, 단어 쌓이는 영역 살짝 침범 가능 */
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(255, 152, 0, 0.95); /* 🚀 핑크 → 주황/코랄 계열로 변경 */
+            right: 18px;
+            left: auto;
+            transform: none;
+            background: linear-gradient(135deg, #fd79a8, #fdcb6e);
             color: white;
-            padding: 15px 25px;
+            padding: 12px 20px;
             border-radius: 15px;
-            font-size: 1.1em;
             font-weight: bold;
-            z-index: 9999;
             text-align: center;
-            animation: toastFade 0.8s ease-in-out;
-            pointer-events: none;
-            max-width: 90%;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            animation: toastPop 0.8s ease-in-out;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            max-width: calc(100vw - 36px);
         }
 
-        @keyframes toastFade {
+        @keyframes toastPop {
+            0% { opacity: 0; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: scale(0.8); }
             0% { opacity: 0; transform: translateX(-50%) scale(0.8); }
             50% { opacity: 1; transform: translateX(-50%) scale(1); }
             100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
@@ -3518,7 +3520,7 @@
 
     <div class="header">
         <div class="logo">
-            🎮 초성왕
+            🎮 ㅊㅅㅋ
         </div>
         <div class="audio-controls">
             <button id="bgmBtn" class="audio-btn active" onclick="toggleBGM()">🎵 BGM</button>
@@ -3532,7 +3534,7 @@
         <!-- 게임 시작 화면 -->
         <div id="gameStartSection" class="game-start-section">
             <div class="start-crown">👑</div>
-            <div class="start-title">초성왕</div>
+            <div class="start-title">초성킹</div>
             
             <div class="start-instruction">
                 긴 단어일수록 대박!<br>특별초성은 보너스!<br>준비되셨습니까?
@@ -4549,7 +4551,7 @@
 
         function getGameEndMessage(score) {
             if (score >= 2000) return { emoji: '👑', message: '초성의 전설!!!', animation: 'mascotSpin' };
-            else if (score >= 1501) return { emoji: '🔥', message: '당신은 초성왕!', animation: 'mascotJump' };
+            else if (score >= 1501) return { emoji: '🔥', message: '당신은 초성킹!', animation: 'mascotJump' };
             else if (score >= 1001) return { emoji: '🤩', message: '고수시네요?', animation: 'mascotPulse' };
             else if (score >= 601) return { emoji: '🤓', message: '제법인데요?', animation: 'mascotShake' };
             else if (score >= 301) return { emoji: '😉', message: '기본은 하시네요?', animation: 'mascotPulse' };
@@ -5046,7 +5048,7 @@
             return window.innerWidth >= 768;
         }
 
-        function showToast(message) {
+        function showMpToast(message) {
             const toast = document.createElement('div');
             toast.className = 'mp-toast';
             toast.textContent = message;
@@ -5061,7 +5063,7 @@
         async function showRoomList() {
             // PC가 아니어도 방 목록은 열 수 있도록 허용하되, 안내만 표시
             if (!isPC()) {
-                showToast('멀티플레이는 PC에서 가장 안정적으로 동작합니다 (모바일은 실험 기능)');
+                showMpToast('멀티플레이는 PC에서 가장 안정적으로 동작합니다 (모바일은 실험 기능)');
             }
 
             console.log('[showRoomList] fetching https://api.chosungking.com/api/rooms');
