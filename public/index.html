@@ -4058,6 +4058,13 @@
             let word = input.value.trim();
             if (!word) return;
 
+            // 디버그(모바일): checkWord가 실제로 실행되는지 확인
+            try {
+                if (gameState.isMobile) {
+                    window.__ck_lastCheckWordAt = Date.now();
+                }
+            } catch (e) {}
+
             // 🆕 턴제 모드에서 채팅 처리
             if (multiplayerState.isMultiplayer && gameState.gameRunning && multiplayerState.gameMode === 'turn') {
                 const lastRoomData = multiplayerState.lastRoomData;
@@ -4116,7 +4123,7 @@
             // 띄어쓰기 제거 후 길이 체크
             if (wordForGame.length < 2 || wordForGame.length > 6) {
                 // 🆕 PC에서는 항상 updateEmoji 사용, 모바일에서만 showToast 사용
-                if (gameState.isMobile && !isPC()) {
+                if (gameState.isMobile) {
                     showScoreToast('😓', '2~6글자만 가능해요', 0);
                 } else {
                     updateEmoji('😓', '2~6글자만 가능해요', 0);
@@ -4129,7 +4136,7 @@
             const isValid = hasEnoughConsonants(wordChosung, currentChars);
             if (!isValid) {
                 // 🆕 PC에서는 항상 updateEmoji 사용, 모바일에서만 showToast 사용
-                if (gameState.isMobile && !isPC()) {
+                if (gameState.isMobile) {
                     showScoreToast('😓', '초성을 확인해주세요', 0);
                 } else {
                     updateEmoji('😓', '초성을 확인해주세요', 0);
@@ -4167,7 +4174,7 @@
                         updateDefinition('이미 나왔던 단어입니다');
 
                         // 토스트 메시지 (턴제 모드: PC에서는 showTurnModeToast, 모바일에서만 showToast)
-                        if (gameState.isMobile && !isPC()) {
+                        if (gameState.isMobile) {
                             showScoreToast('😓', '이미 나왔던 단어입니다', 0);
                         } else {
                             showTurnModeToast('😓', '이미 나왔던 단어입니다');
@@ -4258,7 +4265,7 @@
                         
                         // 생명권 토스트는 기존 규칙 유지 (턴제 모드: PC에서는 showTurnModeToast, 모바일에서만 showToast)
                         if (livesEarned >= 1) {
-                            if (gameState.isMobile && !isPC()) {
+                            if (gameState.isMobile) {
                                 showScoreToast('❤️', `생명권 ${livesEarned}개 획득`, 0);
                             } else {
                                 showTurnModeToast('❤️', `생명권 ${livesEarned}개 획득`);
@@ -4315,7 +4322,7 @@
                         updateDefinition('사전에 없는 단어입니다');
                         
                         // 토스트 메시지 (턴제 모드: PC에서는 showTurnModeToast, 모바일에서만 showToast)
-                        if (gameState.isMobile && !isPC()) {
+                        if (gameState.isMobile) {
                             showScoreToast('😓', '사전에 없는 단어입니다', 0);
                         } else {
                             showTurnModeToast('😓', '사전에 없는 단어입니다');
@@ -4345,8 +4352,8 @@
                     clearTimeout(timeoutId);
                     if (error.name === 'AbortError') {
                         updateDefinition('요청 시간 초과 (2초)');
-                        if (gameState.isMobile && !isPC()) {
-                            showToast('⏱️', '응답이 너무 느립니다', 0);
+                        if (gameState.isMobile) {
+                            showScoreToast('⏱️', '응답이 너무 느립니다', 0);
                         } else {
                             updateEmoji('⏱️', '응답이 너무 느립니다', 0);
                         }
@@ -4397,7 +4404,7 @@
                     }
                     
                     // 🆕 PC에서는 항상 updateEmoji 사용, 모바일에서만 showToast 사용
-                    if (gameState.isMobile && !isPC()) {
+                    if (gameState.isMobile) {
                         showScoreToast(emoji, message, score.total);
                     } else {
                         updateEmoji(emoji, message, score.total);
@@ -4408,7 +4415,7 @@
                     input.focus();
                 } else {
                     // 🆕 PC에서는 항상 updateEmoji 사용, 모바일에서만 showToast 사용
-                    if (gameState.isMobile && !isPC()) {
+                    if (gameState.isMobile) {
                         showScoreToast('😓', '올바른 단어가 아니에요', 0);
                     } else {
                         updateEmoji('😓', '올바른 단어가 아니에요', 0);
