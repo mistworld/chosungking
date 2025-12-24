@@ -3052,7 +3052,6 @@
                 background: white;
                 color: #2d3436;
                 border: 2px solid #dfe6e9;
-                border: none;
                 border-radius: 12px;
                 font-size: 1em;
                 font-weight: bold;
@@ -3064,6 +3063,12 @@
             }
 
             .settings-menu-btn.primary {
+                background: #ff7675;
+                color: white;
+                border: none;
+            }
+
+            .settings-menu-btn.guide {
                 background: #ff7675;
                 color: white;
                 border: none;
@@ -3839,7 +3844,7 @@
                 <button id="modalTypingBtn" class="settings-toggle active" onclick="toggleModalTyping()">ON</button>
             </div>
             <button class="settings-menu-btn primary" onclick="resetGameFromSettings()">🔄 새게임</button>
-            <button class="settings-menu-btn" onclick="openGuideModal()">📘 공략법</button>
+            <button class="settings-menu-btn guide" onclick="openGuideModal()">📘 공략법</button>
             <button class="settings-menu-btn close" onclick="closeSettings()">닫기</button>
         </div>
     </div>
@@ -3966,6 +3971,25 @@ Tip) 세글자 이상 + 특별초성 활용하기!
             shuffleCount: 0,
             isMobile: window.innerWidth <= 768
         };
+
+        function detectMobile() {
+            try {
+                const ua = (navigator.userAgent || '').toLowerCase();
+                const uaMobile = /android|iphone|ipad|ipod|mobile/.test(ua);
+                const vwMobile = window.innerWidth <= 768;
+                return uaMobile || vwMobile;
+            } catch (e) {
+                return window.innerWidth <= 768;
+            }
+        }
+
+        // 화면 회전/리사이즈에서 모바일 플래그 갱신
+        try {
+            gameState.isMobile = detectMobile();
+            window.addEventListener('resize', () => {
+                gameState.isMobile = detectMobile();
+            });
+        } catch (e) {}
 
         const DEBUG_POLLING = false;
 
@@ -4153,13 +4177,14 @@ Tip) 세글자 이상 + 특별초성 활용하기!
             try {
                 toast.setAttribute('data-toast', '1');
                 window.__ck_lastToastAt = Date.now();
+                window.__ck_lastToastMessage = message;
             } catch (e) {}
 
             setTimeout(() => {
                 try {
                     if (toast && toast.parentNode) toast.parentNode.removeChild(toast);
                 } catch (e) {}
-            }, 900);
+            }, 1600);
         }
         
         // 🆕 턴제 모드용 토스트 함수 (PC에서도 표시)
