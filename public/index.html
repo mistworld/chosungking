@@ -4975,6 +4975,20 @@ Tip) 세글자 이상 + 특별초성 활용하기!
             
             // 모바일 설정 모달 닫기
             closeSettings();
+
+            // 모바일 싱글: 종료 모달 닫기 후 시작화면 하단 잘림 방지 (레이아웃 재적용/스크롤 보정)
+            try {
+                if (gameState && gameState.isMobile && !(multiplayerState && multiplayerState.isMultiplayer)) {
+                    if (typeof updateStartScreenForMobile === 'function') {
+                        updateStartScreenForMobile();
+                    }
+                    requestAnimationFrame(() => {
+                        try {
+                            window.scrollTo(0, 0);
+                        } catch (e) {}
+                    });
+                }
+            } catch (e) {}
         }
 
         function resetGameFromSettings() {
