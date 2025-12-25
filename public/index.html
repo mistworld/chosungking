@@ -4266,6 +4266,10 @@ Tip) 세글자 이상 + 특별초성 활용하기!
         
         // 🆕 턴제 모드용 토스트 함수 (PC에서도 표시)
         function showTurnModeToast(emoji, message) {
+            // PC 턴제에서는 토스트를 띄우지 않음 (원래처럼 좌측 슬롯 UI로만 피드백)
+            try {
+                if (!gameState.isMobile && document.body.classList.contains('turn-mode')) return;
+            } catch (e) {}
             // 이전 토스트 제거
             let root = document.getElementById('toastRoot');
             if (!root) {
@@ -6400,6 +6404,20 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                     
                     const roomData = await response.json();
 
+                    // 턴제 모드: 신규 탈락자 감지 시 turndeath.mp3 재생 (모두에게 들림)
+                    if (!gameState.isMobile && !roomData.endTime && roomData.gameMode === 'turn' && Array.isArray(roomData.eliminatedPlayers)) {
+                        try {
+                            const prev = Array.isArray(multiplayerState.lastEliminatedPlayers) ? multiplayerState.lastEliminatedPlayers : [];
+                            const curr = roomData.eliminatedPlayers;
+                            const prevSet = new Set(prev);
+                            const newOnes = curr.filter((pid) => !prevSet.has(pid));
+                            if (newOnes.length > 0 && gameState.sfxEnabled) {
+                                playSfxFile('turndeath.mp3', 0.85);
+                            }
+                            multiplayerState.lastEliminatedPlayers = curr.slice();
+                        } catch (e) {}
+                    }
+
                     // 🆕 방장 상태는 매 폴링마다 서버 players[0] 기준으로 동기화 (시간제 안정화)
                     // 기존 로직은 '퇴장' 이벤트에서만 host 변경을 감지해서, 일부 상황에서 방장이 아닌 것으로 표시될 수 있음
                     if (roomData && Array.isArray(roomData.players) && roomData.players.length > 0 && multiplayerState.playerId) {
@@ -6719,6 +6737,14 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                                     } catch (err) {
                                         console.log('[턴제] 생명권 소진 효과음 로드 실패:', err);
                                     }
+                                }
+                            }
+
+                            // 생명권이 증가했을 때: 해당 유저 슬롯 위에 +1/+3/+5 팝업 표시 (모두에게 보임)
+                            if (roomData.gameMode === 'turn' && currentLife > lastLife) {
+                                const gained = currentLife - lastLife;
+                                if (gained > 0) {
+                                    try { showScorePopup(playerId, gained); } catch (e) {}
                                 }
                             }
                         });
