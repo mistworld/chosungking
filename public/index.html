@@ -7227,8 +7227,7 @@ Tip) 세글자 이상 + 특별초성 활용하기!
             // 새 팝업 생성
             const popup = document.createElement('div');
             popup.className = 'slot-popup';
-            // 턴제 생명권 팝업: +❤️N 형태 (형광 연두 계열)
-            popup.innerHTML = `<span class="life-gain">+<span class="life-heart">❤️</span>${scoreDiff}</span>`;
+            popup.textContent = `+${scoreDiff}`;
             slot.appendChild(popup);
 
             // 1초 후 제거
