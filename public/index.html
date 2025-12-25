@@ -1480,30 +1480,23 @@
             transform: translate(-50%, -50%);
             font-size: 3.5em;
             font-weight: bold;
-            color: #6bff6b;
+            color: #fd79a8;
             text-shadow: 
-                0 2px 6px rgba(0, 0, 0, 0.35),
-                0 0 10px rgba(107, 255, 107, 0.75),
-                0 0 22px rgba(107, 255, 107, 0.65),
-                0 0 40px rgba(107, 255, 107, 0.35);
+                3px 3px 6px rgba(0, 0, 0, 0.3),
+                0 0 15px rgba(253, 121, 168, 0.8);
             animation: popupBurst 1s ease-out forwards;
             pointer-events: none;
             z-index: 10;
         }
 
-        .slot-popup .life-gain {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.12em;
-            letter-spacing: -0.02em;
-            filter: saturate(1.35) brightness(1.15);
-        }
-
-        .slot-popup .life-heart {
+        body.turn-mode .slot-popup {
             color: #6bff6b;
             text-shadow:
-                0 0 8px rgba(107, 255, 107, 0.9),
-                0 0 18px rgba(107, 255, 107, 0.75);
+                0 2px 6px rgba(0, 0, 0, 0.35),
+                0 0 10px rgba(107, 255, 107, 0.75),
+                0 0 22px rgba(107, 255, 107, 0.65),
+                0 0 40px rgba(107, 255, 107, 0.35);
+            filter: saturate(1.35) brightness(1.15);
         }
 
         @keyframes popupBurst {
