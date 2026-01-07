@@ -5963,7 +5963,8 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                 if (extra) extra.style.display = 'block';
                 if (mobileTitle) mobileTitle.style.display = 'block';
                 if (startInstruction) startInstruction.style.display = 'none';
-                if (togetherBtn) togetherBtn.style.display = 'none';
+                // 모바일에서도 함께하기 버튼은 유지 (PC 권장 토스트는 showRoomList()가 처리)
+                if (togetherBtn) togetherBtn.style.display = '';
                 if (soloBtn) soloBtn.textContent = '게임시작';
                 if (bestScoreEl) bestScoreEl.textContent = `최고기록 : ${gameState.bestScore}점`;
                 if (crown) crown.style.display = 'none';
@@ -8853,7 +8854,7 @@ Tip) 세글자 이상 + 특별초성 활용하기!
             const scoreGuide = document.querySelector('.score-guide');
             
             if (startInstruction) {
-                startInstruction.innerHTML = '긴 단어일수록 대박!<br>특별초성은 보너스!<br>준비되셨습니까?';
+                startInstruction.textContent = '긴 단어일수록 대박! 특별초성은 보너스! 준비되셨습니까?';
             }
             
             if (scoreGuide) {
@@ -8940,6 +8941,12 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                 let buttonsHTML = `
                     <button class="mode-start-btn solo" onclick="startGame()">
                         혼자하기
+                    </button>
+                `;
+                // 함께하기 버튼(대기방 목록 모달) - 최초 시작 화면에서도 항상 보이도록
+                buttonsHTML += `
+                    <button class="mode-start-btn together" onclick="showRoomList()">
+                        함께하기
                     </button>
                 `;
 
