@@ -1,0 +1,19 @@
+{
+  "name": "초성킹",
+  "short_name": "초성킹",
+  "description": "초성 배틀 게임",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffeaa7",
+  "theme_color": "#fd79a8",
+  "lang": "ko",
+  "icons": [
+    {
+      "src": "/pwa-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -3,7 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>초성킹</title>
+    <title>초성킹 - 초성게임 | 두뇌게임 | 어휘력증진</title>
+    <meta name="description" content="긴 단어일수록 대박! 초성으로 어휘력을 키우는 두뇌게임">
+    <meta name="keywords" content="초성킹, 초성게임, 초성배틀, 두뇌게임, 어휘력증진, 어휘력게임, 한글게임, 단어게임, 워들">
+    <meta name="theme-color" content="#fd79a8">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="icon" href="/pwa-icon.svg" type="image/svg+xml">
     <!-- Force deploy: 2024-12-10-서버시간동기화수정-재배포-확인 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,9 +21,13 @@
             -webkit-tap-highlight-color: transparent;
         }
 
+        :root {
+            /* JS로 visualViewport 높이를 주입 (키보드/기기별 빈공간 방지) */
+            --app-height: 100dvh;
+        }
+
         html, body {
-            height: 100vh;
-            height: 100dvh;
+            height: var(--app-height);
             overflow: hidden;
             overscroll-behavior: none;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', sans-serif;
@@ -850,6 +859,25 @@
             transform: scale(0.95);
         }
 
+        /* ===== 앱(안드로이드) 전용: 4줄 UI 재배치/확대 ===== */
+        /* 배경(떨어지는 초성 등)은 항상 가장 아래 레이어 */
+        body.native-app #gameScreen {
+            position: relative;
+        }
+
+        body.native-app #gameScreen .game-content {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        body.native-app #gameScreen > :not(.game-content) {
+            position: relative;
+            z-index: 1;
+        }
+        /* 앱(안드로이드) 전용 UI 크기/간격은 모바일 미디어쿼리에서 조정 */
+
         /* 게임 종료 화면 */
         .game-end-overlay {
             position: fixed;
@@ -1052,6 +1080,118 @@
             font-weight: 900;
             color: #e84393;
             text-shadow: 0 1px 0 rgba(255,255,255,0.6);
+        }
+
+        /* 앱(Play Store) 전용: 정답 토스트(점수/이모지/문구) 더 크게 */
+        body.native-app .toast-message {
+            width: min(250px, calc(100vw - 32px));
+        }
+        body.native-app .toast-message .toast-text {
+            font-size: 1.22em;
+        }
+        body.native-app .toast-message .toast-text .toast-emoji {
+            font-size: 1.45em;
+        }
+        body.native-app .toast-message .toast-score {
+            font-size: 2.05em;
+        }
+
+        /* 새게임 안내(90초) / 확인(90초+) 전용: 점수 토스트와 분리된 "정보 토스트" */
+        .csk-info-toast {
+            position: fixed;
+            top: 32vh;
+            left: 46%;
+            transform: translateX(-50%);
+            max-width: min(320px, calc(100vw - 40px));
+            padding: 14px 16px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.96);
+            border: 2px solid #ffeaa7;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+            z-index: 25000;
+            font-weight: 800;
+            text-align: center;
+            color: #2d3436;
+            pointer-events: none;
+        }
+
+        .csk-info-toast .msg {
+            display: block;
+            font-size: 1.05em;
+            line-height: 1.25;
+            word-break: keep-all;
+        }
+
+        /* 새게임 확인 모달 (게임 디자인과 통일감 있게) */
+        .csk-confirm-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.55);
+            z-index: 26000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+        }
+
+        .csk-confirm-dialog {
+            width: min(360px, 92vw);
+            background: white;
+            border-radius: 18px;
+            border: 3px solid #ffeaa7;
+            box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+            overflow: hidden;
+        }
+
+        .csk-confirm-header {
+            padding: 14px 16px;
+            background: linear-gradient(135deg, #ffeaa7, #fdcb6e);
+            color: #2d3436;
+            font-weight: 900;
+            letter-spacing: -0.4px;
+            font-size: 1.05em;
+            text-align: center;
+        }
+
+        .csk-confirm-body {
+            padding: 16px;
+            text-align: center;
+        }
+
+        .csk-confirm-body .csk-confirm-msg {
+            font-size: 1.02em;
+            line-height: 1.35;
+            color: #2d3436;
+            font-weight: 800;
+            word-break: keep-all;
+        }
+
+        .csk-confirm-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .csk-confirm-btn {
+            border: none;
+            border-radius: 14px;
+            padding: 12px 10px;
+            font-size: 1.02em;
+            font-weight: 900;
+            cursor: pointer;
+        }
+
+        .csk-confirm-btn.primary {
+            background: linear-gradient(135deg, #fd79a8, #fdcb6e);
+            color: white;
+            box-shadow: 0 6px 18px rgba(253, 121, 168, 0.25);
+        }
+
+        .csk-confirm-btn.secondary {
+            background: #f5f5f5;
+            color: #2d3436;
+            border: 2px solid #dfe6e9;
         }
 
         #toastRoot {
@@ -2720,6 +2860,12 @@
                 height: 100%;
             }
 
+            /* ===== 앱(안드로이드) 전용: 키보드 떠 있어도 4줄 고정 보이기 ===== */
+            /* 핵심: 100vh/100dvh 대신 visualViewport 기반 --app-height 사용 */
+            body.native-app {
+                height: var(--app-height);
+            }
+
             .header {
                 display: none;
             }
@@ -2735,7 +2881,13 @@
                 overflow: hidden;
                 position: relative;
                 z-index: 1;
-                background: rgba(255, 255, 255, 0.95);
+                background: white;
+            }
+
+            body.native-app .container {
+                height: var(--app-height);
+                z-index: 2; /* falling-bg(배경)보다 항상 위 */
+                background: white;
             }
 
             .game-start-section {
@@ -2797,6 +2949,12 @@
                 border: 3px solid transparent;
                 transition: border-color 0.3s ease;
             }
+
+            /* 앱 전용: 전체 좌우 여백(답답함 해소) + 4줄을 위로 당김 */
+            body.native-app #gameScreen {
+                padding: 10px 12px 12px;
+                box-sizing: border-box;
+            }
             
             /* 턴제 모드: 자신의 턴일 때 단어 입력창 테두리 깜빡임 */
             .word-input.my-turn {
@@ -2828,6 +2986,13 @@
                 flex-shrink: 0;
             }
 
+            /* 앱 전용: 첫줄 세로만 15% 정도 납작 + 좌우는 #gameScreen 패딩으로 통일 */
+            body.native-app .game-info {
+                /* “지금 기준”에서 확실히 크게 (박스 높이 + 폰트 동반 확대) */
+                padding: 10px 0;
+                gap: 10px;
+            }
+
             .info-box {
                 background: #ffeaa7;
                 padding: 6px 8px;
@@ -2835,6 +3000,24 @@
                 flex: 1;
                 text-align: center;
                 box-shadow: 0 1px 3px rgba(253, 203, 110, 0.3);
+            }
+
+            body.native-app .info-box {
+                /* 노란 박스(카드) 자체를 크게 */
+                /* (최신폰 뜻풀이 공간 확보를 위해) 세로는 '아주 살짝'만 줄임 */
+                padding: 10px 10px;
+                min-height: 78px;
+                border-radius: 12px;
+            }
+
+            body.native-app .info-box div:first-child {
+                font-size: clamp(0.72em, 3.1vw, 0.88em);
+                margin-bottom: 6px;
+            }
+
+            body.native-app .info-box div:last-child {
+                font-size: clamp(1.35em, 6.2vw, 1.95em);
+                line-height: 1.0;
             }
 
             .info-box div:first-child {
@@ -2868,6 +3051,12 @@
                 cursor: pointer;
             }
 
+            body.native-app .settings-btn {
+                /* 설정도 정사각형 느낌 완화(세로만 조금 줄임) */
+                padding: 7px 10px;
+                border-radius: 12px;
+            }
+
             /* 2줄: 안내 문구 숨김 */
             .fixed-guide {
                 display: none;
@@ -2885,11 +3074,33 @@
                 flex-shrink: 0;
             }
 
+            /* 앱 전용: 초성은 좋게 유지하되, 노란박스가 화면 끝에 붙지 않게 */
+            body.native-app .consonants {
+                margin: 10px 0 0;
+                padding: 16px 14px; /* 내부 좌우 여백 */
+                border-radius: 18px;
+                gap: 8px;
+                justify-content: space-evenly;
+            }
+
             .consonant {
                 font-size: 1.5em;
                 padding: 6px 10px;
                 min-width: 36px;
                 border: 2px solid #f5f5f5;
+            }
+
+            body.native-app .consonant {
+                /* 정사각형 유지 + 전체 크기는 아주 살짝만 줄여서 좌우 여백 확보 */
+                width: clamp(52px, 14.2vw, 74px);
+                height: clamp(52px, 14.2vw, 74px);
+                min-width: 0;
+                padding: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 14px;
+                font-size: clamp(2.4em, 8.6vw, 3.1em);
             }
 
             /* 4줄: 이모티콘 숨김 (토스트로 대체) */
@@ -2928,6 +3139,27 @@
                 width: 100%;
             }
 
+            /* 앱 전용: 뜻풀이 폰트/2줄 규칙은 "원래"대로(너무 커지지 않게) */
+            body.native-app .definition-container {
+                margin-top: 10px;
+                border-radius: 16px;
+                padding: 6px 10px;
+                /* 회색 박스 높이를 1.5배 정도 키워서 2줄 잘림 방지 */
+                height: 92px;
+                min-height: 92px;
+                max-height: 92px;
+                /* 2줄이 아래에서 잘리는 기종 방지: 위쪽 기준으로 배치 */
+                align-items: flex-start;
+                justify-content: center;
+            }
+
+            body.native-app .definition-text {
+                font-size: 0.9em;
+                line-height: 1.35;
+                /* 일부 기종에서 rounding 때문에 2줄이 미세하게 잘리는 문제 방지 */
+                max-height: none;
+            }
+
             /* 6줄: 입력창 - 흰배경 노란테두리 */
             .input-section {
                 display: flex;
@@ -2937,6 +3169,15 @@
                 background: white;
                 border-top: 1px solid #f0f0f0;
                 flex-shrink: 0;
+            }
+
+            /* 앱 전용: 좌우는 #gameScreen 패딩에 맞추고, 입력칸이 키보드 위에서 항상 보이게 */
+            body.native-app .input-section {
+                padding: 10px 12px;
+                margin-top: 10px;
+                background: white; /* 불투명 */
+                border-top: 1px solid #f0f0f0;
+                border-radius: 14px;
             }
 
             .word-input {
@@ -2997,8 +3238,17 @@
                 left: 0;
                 right: 0;
                 height: 35vh;
-                background: linear-gradient(to bottom, rgba(255, 255, 255, 0.95), rgba(255, 234, 167, 0.95));
-                z-index: 1;
+                /* 입력창 아래쪽부터 아래로 갈수록 더 진해지는 느낌 */
+                background: linear-gradient(
+                    to bottom,
+                    rgba(255, 255, 255, 0.00) 0%,
+                    rgba(255, 255, 255, 0.22) 18%,
+                    rgba(255, 255, 255, 0.45) 42%,
+                    rgba(255, 234, 167, 0.88) 100%
+                );
+                -webkit-backdrop-filter: blur(10px);
+                backdrop-filter: blur(10px);
+                z-index: 0; /* UI 아래로 */
                 pointer-events: none;
                 overflow: hidden;
             }
@@ -3133,6 +3383,12 @@
 
             .settings-menu-btn.close {
                 background: linear-gradient(135deg, #fd79a8, #fdcb6e);
+                color: white;
+                border: none;
+            }
+
+            .settings-menu-btn.exit {
+                background: #ff7675;
                 color: white;
                 border: none;
             }
@@ -3731,11 +3987,14 @@
         <div id="gameStartSection" class="game-start-section">
             <div class="start-crown">👑</div>
             <div class="start-title">초성킹</div>
+            <div style="font-size: 12px; color: #888; margin: 5px 0;">
+              초성게임 | 두뇌게임 | 어휘력증진
+            </div>
 
             <div class="mobile-start-title" id="mobileStartTitle">👑초성킹👑</div>
             
             <div class="start-instruction">
-                긴 단어일수록 대박!<br>특별초성은 보너스!<br>준비되셨습니까?
+                긴 단어일수록 대박! 특별초성은 보너스! 준비되셨습니까?
             </div>
 
             <div class="mobile-start-extra" id="mobileStartExtra">
@@ -3773,9 +4032,6 @@
             <div class="game-mode-buttons" id="gameModeButtons">
                 <button class="mode-start-btn solo" onclick="safeCall('startGame')">
                     혼자하기
-                </button>
-                <button class="mode-start-btn together" onclick="safeCall('showRoomList')">
-                    함께하기
                 </button>
             </div>
             <script>
@@ -3879,7 +4135,7 @@
                 <button class="submit-btn" onclick="checkWord()">확인</button>
             </div>
 
-            <!-- 나머지 공간 -->
+            <!-- 나머지 공간 (배경용 레이어) -->
             <div class="game-content"></div>
         </div>
     </div>
@@ -3902,6 +4158,7 @@
             </div>
             <button class="settings-menu-btn primary" onclick="resetGameFromSettings()">🔄 새게임</button>
             <button class="settings-menu-btn guide" onclick="openGuideModal()">📘 공략법</button>
+            <button class="settings-menu-btn exit" onclick="requestExitApp()">🚪 앱종료</button>
             <button class="settings-menu-btn close" onclick="closeSettings()">닫기</button>
         </div>
     </div>
@@ -4008,6 +4265,300 @@ Tip) 세글자 이상 + 특별초성 활용하기!
     <script>
         // API 기본 URL
         const API_BASE = 'https://api.chosungking.com';
+
+        // PWA service worker 등록 (웹 기능 영향 없음)
+        try {
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('/sw.js').catch(() => {});
+                });
+            }
+        } catch (e) {}
+
+        // ===== 모바일 키보드/기기별 뷰포트 높이 보정 =====
+        // 100vh/100dvh 고정으로 생기는 "입력창-키보드 사이 빈 공간"을 줄임
+        (function setupViewportHeightVar() {
+            try {
+                const set = () => {
+                    const vv = window.visualViewport;
+                    const h = (vv && vv.height) ? vv.height : window.innerHeight;
+                    document.documentElement.style.setProperty('--app-height', `${Math.round(h)}px`);
+                };
+                set();
+                window.addEventListener('resize', set);
+                if (window.visualViewport) {
+                    window.visualViewport.addEventListener('resize', set);
+                    window.visualViewport.addEventListener('scroll', set);
+                }
+            } catch (e) {}
+        })();
+
+        // ===== 앱(Play Store) 전용: AdMob 전면 광고 (2판마다) =====
+        const ADMOB_INTERSTITIAL_ID = 'ca-app-pub-8301466099937891/3388391649';
+        const isNativeApp = (() => {
+            try {
+                const cap = window.Capacitor;
+                if (!cap) return false;
+                if (typeof cap.isNativePlatform === 'function') return !!cap.isNativePlatform();
+                if (typeof cap.getPlatform === 'function') return cap.getPlatform() !== 'web';
+                return true;
+            } catch (e) {
+                return false;
+            }
+        })();
+
+        // 앱 전용 레이아웃 적용
+        try {
+            if (isNativeApp && document && document.body) {
+                document.body.classList.add('native-app');
+            }
+        } catch (e) {}
+
+        // ===== 앱(안드로이드) 전용: 홈버튼/백그라운드로 가면 BGM 끄기 =====
+        (function setupAppStateAudioPolicy() {
+            if (!isNativeApp) return;
+            try {
+                const App = window.Capacitor?.Plugins?.App;
+                if (App && typeof App.addListener === 'function') {
+                    App.addListener('appStateChange', ({ isActive }) => {
+                        try {
+                            if (!isActive) {
+                                // 백그라운드: BGM 즉시 정지
+                                stopBGM();
+                                stopTickSound();
+                            } else {
+                                // 포그라운드: 게임 중이고 BGM ON이면 다시 재생
+                                if (gameState && gameState.gameRunning && gameState.bgmEnabled) {
+                                    playBGM();
+                                }
+                            }
+                        } catch (e) {}
+                    });
+                    return;
+                }
+            } catch (e) {}
+
+            // fallback(일부 WebView): visibilitychange
+            try {
+                document.addEventListener('visibilitychange', () => {
+                    try {
+                        if (document.hidden) {
+                            stopBGM();
+                            stopTickSound();
+                        } else {
+                            if (gameState && gameState.gameRunning && gameState.bgmEnabled) playBGM();
+                        }
+                    } catch (e) {}
+                });
+            } catch (e) {}
+        })();
+
+        // ===== 앱(안드로이드) 전용: 키보드 "항상 떠있게" (입력칸 포커스 고정) =====
+        let __keyboardLockEnabled = false;
+        function setKeyboardLockEnabled(on) {
+            __keyboardLockEnabled = !!on;
+            if (!isNativeApp) return;
+            const input = document.getElementById('wordInput');
+            if (!input) return;
+            if (__keyboardLockEnabled) {
+                try { input.focus({ preventScroll: true }); } catch (e) { try { input.focus(); } catch (_) {} }
+            }
+        }
+
+        function __cskGetSingleElapsedSeconds() {
+            try {
+                if (gameState && gameState.singleGameStartAt) {
+                    return Math.max(0, Math.floor((Date.now() - gameState.singleGameStartAt) / 1000));
+                }
+                if (gameState && typeof gameState.timeLeft === 'number') {
+                    return Math.max(0, 180 - gameState.timeLeft);
+                }
+            } catch (e) {}
+            return 0;
+        }
+
+        function showCskInfoToast(message, durationMs) {
+            try {
+                const old = document.querySelector('.csk-info-toast');
+                if (old) old.remove();
+            } catch (e) {}
+
+            const t = document.createElement('div');
+            t.className = 'csk-info-toast';
+            t.innerHTML = `<span class="msg">${message}</span>`;
+            document.body.appendChild(t);
+            setTimeout(() => {
+                try { if (t && t.parentNode) t.parentNode.removeChild(t); } catch (e) {}
+            }, Math.max(500, durationMs || 2000));
+        }
+
+        function showCskConfirmModal(opts) {
+            try {
+                const existing = document.querySelector('.csk-confirm-overlay');
+                if (existing) existing.remove();
+            } catch (e) {}
+
+            const overlay = document.createElement('div');
+            overlay.className = 'csk-confirm-overlay';
+            const title = (opts && opts.title) ? String(opts.title) : '확인';
+            const messageHtml = (opts && opts.messageHtml) ? String(opts.messageHtml) : '';
+            const yesText = (opts && opts.yesText) ? String(opts.yesText) : '예';
+            const noText = (opts && opts.noText) ? String(opts.noText) : '아니오';
+            overlay.innerHTML = `
+                <div class="csk-confirm-dialog" role="dialog" aria-modal="true">
+                    <div class="csk-confirm-header">${title}</div>
+                    <div class="csk-confirm-body">
+                        <div class="csk-confirm-msg">${messageHtml}</div>
+                        <div class="csk-confirm-actions">
+                            <button class="csk-confirm-btn primary" data-action="yes">${yesText}</button>
+                            <button class="csk-confirm-btn secondary" data-action="no">${noText}</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            const cleanup = () => {
+                try { if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay); } catch (e) {}
+            };
+
+            overlay.addEventListener('click', (e) => {
+                // 배경 클릭은 닫지 않음(실수 방지)
+                e.stopPropagation();
+            });
+
+            const yesBtn = overlay.querySelector('[data-action="yes"]');
+            const noBtn = overlay.querySelector('[data-action="no"]');
+            if (yesBtn) {
+                yesBtn.addEventListener('click', () => {
+                    cleanup();
+                    try { opts && opts.onYes && opts.onYes(); } catch (e) {}
+                });
+            }
+            if (noBtn) {
+                noBtn.addEventListener('click', () => {
+                    cleanup();
+                    try { opts && opts.onNo && opts.onNo(); } catch (e) {}
+                });
+            }
+        }
+
+        function showCskNewGameConfirm(onYes, onNo) {
+            showCskConfirmModal({
+                title: '새게임 확인',
+                messageHtml: '90초가 지나면 한게임으로 인정됩니다.<br>새로 게임하시겠습니까?',
+                yesText: '예',
+                noText: '아니오',
+                onYes,
+                onNo
+            });
+        }
+
+        function requestExitApp() {
+            // 키보드 내려가게 (설정/종료모달 포함 어디서든)
+            try { setKeyboardLockEnabled(false); } catch (e) {}
+            try { document.getElementById('wordInput')?.blur(); } catch (e) {}
+
+            showCskConfirmModal({
+                title: '앱 종료',
+                messageHtml: '초성킹 앱을 종료하시겠습니까?',
+                yesText: '예',
+                noText: '아니오',
+                onYes: () => {
+                    try {
+                        const App = window.Capacitor?.Plugins?.App;
+                        if (App && typeof App.exitApp === 'function') {
+                            App.exitApp();
+                            return;
+                        }
+                    } catch (e) {}
+                    try { window.close(); } catch (e) {}
+                },
+                onNo: () => {
+                    // 게임 중이면 키보드 다시 유지
+                    try {
+                        if (isNativeApp && gameState && gameState.isMobile && gameState.gameRunning) {
+                            setKeyboardLockEnabled(true);
+                        }
+                    } catch (e) {}
+                }
+            });
+        }
+
+        (function setupKeyboardLockHandlers() {
+            if (!isNativeApp) return;
+            const getInput = () => document.getElementById('wordInput');
+            const isModalOpen = () => {
+                const ids = ['settingsModal', 'guideModal', 'mpRoomModal', 'mpNameModal', 'mpRoomTitleModal'];
+                for (const id of ids) {
+                    const el = document.getElementById(id);
+                    if (el && !el.classList.contains('hidden')) return true;
+                }
+                return false;
+            };
+
+            // 입력이 블러되면 즉시 다시 포커스 (키보드가 안 내려가게)
+            document.addEventListener('focusout', (e) => {
+                if (!__keyboardLockEnabled) return;
+                if (isModalOpen()) return;
+                const input = getInput();
+                if (!input) return;
+                if (e.target === input) {
+                    setTimeout(() => {
+                        try { input.focus({ preventScroll: true }); } catch (err) { try { input.focus(); } catch (_) {} }
+                    }, 0);
+                }
+            }, true);
+
+            // 화면 다른 곳을 눌러도 입력으로 포커스 되돌림 (버튼/인풋 눌렀을 땐 방해하지 않음)
+            document.addEventListener('touchstart', (e) => {
+                if (!__keyboardLockEnabled) return;
+                if (isModalOpen()) return;
+                const input = getInput();
+                if (!input) return;
+                const t = e.target;
+                if (t && typeof t.closest === 'function') {
+                    if (t.closest('button') || t.closest('input')) return;
+                }
+                try { input.focus({ preventScroll: true }); } catch (err) { try { input.focus(); } catch (_) {} }
+            }, { passive: true });
+        })();
+
+        let __admobInitDone = false;
+        async function maybeShowInterstitialAfterSingleGame(elapsedSeconds) {
+            if (!isNativeApp) return;
+            try {
+                // "한 게임 인정" 기준: 90초 이상 플레이
+                const MIN_COUNT_SECONDS = 90;
+                if (typeof elapsedSeconds === 'number' && elapsedSeconds < MIN_COUNT_SECONDS) return;
+
+                // 싱글플레이 종료 카운트 (앱 내부에서만 사용)
+                const key = 'csk_app_single_end_count';
+                const prev = parseInt(localStorage.getItem(key) || '0', 10) || 0;
+                const next = prev + 1;
+                localStorage.setItem(key, String(next));
+
+                // 2판마다 전면 광고
+                if (next % 2 !== 0) return;
+
+                const AdMob = window.Capacitor?.Plugins?.AdMob;
+                if (!AdMob) return;
+
+                if (!__admobInitDone) {
+                    await AdMob.initialize();
+                    __admobInitDone = true;
+                }
+
+                await AdMob.prepareInterstitial({
+                    adId: ADMOB_INTERSTITIAL_ID,
+                    isTesting: false,
+                    immersiveMode: true
+                });
+                await AdMob.showInterstitial();
+            } catch (e) {
+                try { console.log('[AdMob] interstitial failed (ignored):', e); } catch (_) {}
+            }
+        }
         
         // 게임 상태
         const gameState = {
@@ -4026,7 +4577,8 @@ Tip) 세글자 이상 + 특별초성 활용하기!
             bestScore: 0,
             roundCount: 0,
             shuffleCount: 0,
-            isMobile: window.innerWidth <= 768
+            isMobile: window.innerWidth <= 768,
+            singleGameStartAt: null
         };
 
         // 콘솔/디버깅을 위해 노출 (PC 기능에 영향 없음)
@@ -4313,6 +4865,10 @@ Tip) 세글자 이상 + 특별초성 활용하기!
 
         // 별똥별 초성 배경 생성 함수
         function createFallingConsonants() {
+            // 앱(Play Store)에서는 배경 애니메이션 사용 안 함 (요청사항)
+            try {
+                if (isNativeApp) return;
+            } catch (e) {}
             // 기존 컨테이너와 별똥별 제거
             const oldContainer = document.querySelector('.falling-bg');
             if (oldContainer) oldContainer.remove();
@@ -4751,6 +5307,8 @@ Tip) 세글자 이상 + 특별초성 활용하기!
             gameState.tickSoundPlaying = false;
             gameState.roundCount++;
             gameState.shuffleCount = 0;
+            // 싱글플레이 "플레이 시간" 측정 시작 (광고 카운트 치팅 방지용)
+            try { gameState.singleGameStartAt = Date.now(); } catch (e) {}
             
             gameState.originalConsonants = getRandomConsonants();
             gameState.currentConsonants = [...gameState.originalConsonants];
@@ -4765,8 +5323,6 @@ Tip) 세글자 이상 + 특별초성 활용하기!
             
             if (gameState.isMobile) {
                 updateDefinition('단어를 입력하면 뜻이 표시됩니다');
-                // 모바일에서만 별똥별 초성 배경 생성
-                createFallingConsonants();
             } else {
                 updateEmoji('🤔', '단어를 입력해주세요', 0);
                 updateDefinition('단어를 입력하면 뜻이 표시됩니다');
@@ -4775,6 +5331,11 @@ Tip) 세글자 이상 + 특별초성 활용하기!
             const input = document.getElementById('wordInput');
             input.value = '';
             setTimeout(() => input.focus(), 300);
+
+            // 앱(안드로이드): 게임 중엔 키보드가 내려가지 않게 고정
+            try {
+                if (isNativeApp && gameState.isMobile) setKeyboardLockEnabled(true);
+            } catch (e) {}
             
             document.body.classList.remove('time-warning');
             
@@ -4826,9 +5387,10 @@ Tip) 세글자 이상 + 특별초성 활용하기!
             gameState.gameRunning = false;
             document.body.classList.remove('time-warning');
             
-            // 모바일에서 키보드 내리기
+            // 게임 종료 시: 키보드 락 해제 + 키보드 내리기
+            try { setKeyboardLockEnabled(false); } catch (e) {}
             const input = document.getElementById('wordInput');
-            if (input) input.blur();
+            try { if (input) input.blur(); } catch (e) {}
             
             stopTickSound();
             stopBGM();
@@ -4863,6 +5425,14 @@ Tip) 세글자 이상 + 특별초성 활용하기!
             }
 
             showGameEndScreen();
+            // 앱(안드로이드)에서만: 2판마다 전면광고
+            try {
+                const elapsed = gameState.singleGameStartAt ? Math.floor((Date.now() - gameState.singleGameStartAt) / 1000) : 180;
+                maybeShowInterstitialAfterSingleGame(elapsed);
+            } catch (e) {
+                maybeShowInterstitialAfterSingleGame(180);
+            }
+            try { gameState.singleGameStartAt = null; } catch (e) {}
         }
 
         function getGameEndMessage(score) {
@@ -4908,7 +5478,8 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                         <div id="studyWordList" class="word-list"></div>
                     </div>
                     <div class="end-buttons">
-                        <button class="end-btn primary" style="width: 100%;" onclick="closeGameEndScreen(); setTimeout(startGame, 100);">다시 하기</button>
+                        <button class="end-btn primary" onclick="closeGameEndScreen(); setTimeout(startGame, 100);">다시 하기</button>
+                        <button class="end-btn secondary" onclick="requestExitApp()">앱종료</button>
                     </div>
                 </div>
             `;
@@ -4957,15 +5528,56 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                     setTimeout(() => startGame(), 100);
                     return;
                 }
-                
-                // 🎉 토스트 메시지 표시 (확인 모달 제거)
-                showMpToast('최초의 시작화면으로 이동합니다.');
+
+                // 앱(싱글) 새게임: 90초 기준으로 안내/확인 분기 (타이머는 계속 흐르게)
+                try {
+                    if (isNativeApp && gameState.isMobile && !(multiplayerState && multiplayerState.isMultiplayer)) {
+                        const MIN_COUNT_SECONDS = 90;
+                        const elapsed = __cskGetSingleElapsedSeconds();
+
+                        // 90초 미만: 안내만 띄우고(가운데/약간 왼쪽), 즉시 새게임. 카운트/광고 로직에는 포함 X
+                        if (elapsed < MIN_COUNT_SECONDS) {
+                            showCskInfoToast('90초가 지나면 한게임으로 인정됩니다.', 2350); // 1초 정도 더 오래
+                            // 그대로 아래 로직으로 내려가서 새게임 시작
+                        } else {
+                            // 90초 이상: "진지한" 확인 UI (모달) + 예/아니오
+                            showCskNewGameConfirm(() => {
+                                // 예: 한게임 인정(광고 카운트 포함) + 새게임
+                                try { maybeShowInterstitialAfterSingleGame(elapsed); } catch (e) {}
+                                // 실제 새게임 수행
+                                try { setKeyboardLockEnabled(false); } catch (e) {}
+                                try { document.getElementById('wordInput')?.blur(); } catch (e) {}
+                                clearInterval(gameState.gameTimer);
+                                stopBGM();
+                                stopTickSound();
+                                document.body.classList.remove('time-warning');
+                                // 상태 초기화
+                                gameState.score = 0;
+                                gameState.usedWords = [];
+                                gameState.wordDefinitions = {};
+                                gameState.gameRunning = false;
+                                try { gameState.singleGameStartAt = null; } catch (e) {}
+                                // 화면은 유지한 채 새로 시작
+                                setTimeout(() => startGame(), 100);
+                            }, () => {
+                                // 아니오: 그냥 닫고 계속하기(타이머는 계속)
+                                try {
+                                    if (isNativeApp && gameState && gameState.isMobile && gameState.gameRunning) {
+                                        setKeyboardLockEnabled(true);
+                                    }
+                                } catch (e) {}
+                            });
+                            return; // 확인 전에는 새게임 진행하지 않음
+                        }
+                    }
+                } catch (e) {}
             }
             
             clearInterval(gameState.gameTimer);
             stopBGM();
             stopTickSound();
             document.body.classList.remove('time-warning');
+            try { gameState.singleGameStartAt = null; } catch (e) {}
             
             document.getElementById('gameStartSection').classList.remove('hidden');
             document.getElementById('gameScreen').classList.add('hidden');
@@ -4991,12 +5603,20 @@ Tip) 세글자 이상 + 특별초성 활용하기!
         }
 
         function resetGameFromSettings() {
+            // 설정에서 "새게임"은 확인/문구 없이 즉시 새게임
             closeSettings();
-            setTimeout(() => {
-                if (gameState.gameRunning && !confirm('게임을 종료하고 새게임을 시작하시겠습니까?')) return;
-                resetGame();
-                setTimeout(startGame, 100);
-            }, 100);
+            try { setKeyboardLockEnabled(false); } catch (e) {}
+            try { document.getElementById('wordInput')?.blur(); } catch (e) {}
+            // 게임 진행 중이면 resetGame()이 90초 규칙 UI를 처리함
+            resetGame();
+            // resetGame()이 "확인 모달"을 띄운 경우엔 여기서 startGame을 강제로 호출하지 않음
+            try {
+                if (!(isNativeApp && gameState && gameState.isMobile && gameState.gameRunning)) {
+                    setTimeout(() => startGame(), 100);
+                }
+            } catch (e) {
+                setTimeout(() => startGame(), 100);
+            }
         }
 
         function toggleBGM() {
@@ -5020,10 +5640,19 @@ Tip) 세글자 이상 + 특별초성 활용하기!
         function openSettings() {
             document.getElementById('settingsModal').classList.remove('hidden');
             syncSettingsModal();
+            // 설정 모달을 열면 키보드는 내려가야 함
+            try { setKeyboardLockEnabled(false); } catch (e) {}
+            try { document.getElementById('wordInput')?.blur(); } catch (e) {}
         }
 
         function closeSettings() {
             document.getElementById('settingsModal').classList.add('hidden');
+            // 게임 진행 중이면 키보드 다시 띄워서 유지
+            try {
+                if (isNativeApp && gameState && gameState.isMobile && gameState.gameRunning) {
+                    setKeyboardLockEnabled(true);
+                }
+            } catch (e) {}
         }
 
         function syncSettingsModal() {
@@ -5045,12 +5674,21 @@ Tip) 세글자 이상 + 특별초성 활용하기!
             const modal = document.getElementById('guideModal');
             if (!modal) return;
             modal.classList.remove('hidden');
+            // 가이드 모달도 키보드 내리기
+            try { setKeyboardLockEnabled(false); } catch (e) {}
+            try { document.getElementById('wordInput')?.blur(); } catch (e) {}
         }
 
         function closeGuideModal() {
             const modal = document.getElementById('guideModal');
             if (!modal) return;
             modal.classList.add('hidden');
+            // 게임 진행 중이면 키보드 다시 띄워서 유지
+            try {
+                if (isNativeApp && gameState && gameState.isMobile && gameState.gameRunning) {
+                    setKeyboardLockEnabled(true);
+                }
+            } catch (e) {}
         }
 
         function toggleModalBGM() {
@@ -5102,13 +5740,8 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                     'typing.mp3',
                     'tick.mp3',
                     'finished.mp3',
-                    'enter.mp3',
-                    'out.mp3',
-                    'heart.mp3',
                     'background.mp3',
-                    'background2.mp3',
-                    'turn_background.mp3',
-                    'turn_seconds.mp3'
+                    'background2.mp3'
                 ];
                 files.forEach((file) => {
                     if (!sfxCache[file]) {
@@ -5118,7 +5751,7 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                         sfxCache[file] = base;
                     }
                 });
-                ['typing.mp3', 'tick.mp3', 'enter.mp3', 'out.mp3', 'heart.mp3', 'finished.mp3'].forEach((file) => {
+                ['typing.mp3', 'tick.mp3', 'finished.mp3'].forEach((file) => {
                     if (!sfxPool[file]) {
                         const pool = [];
                         for (let i = 0; i < 4; i++) {
@@ -5177,31 +5810,37 @@ Tip) 세글자 이상 + 특별초성 활용하기!
         function playBGM() {
             try {
                 if (!audioUnlocked) unlockAudioOnce();
-                // 턴제 모드: turn_background.mp3 루프
-                if (multiplayerState.isMultiplayer && multiplayerState.gameMode === 'turn') {
+                // 시간제 모드: background.mp3와 background2.mp3 교대
+                const bgmFile = (gameState.roundCount % 2 === 1) ? 'background.mp3' : 'background2.mp3';
+                // ✅ 버그 수정: BGM을 sfxCache 인스턴스로 재사용하면 일부 기기에서 "2초 루프" 현상 발생
+                // 원래 방식으로 되돌리되, 같은 곡이 이미 재생 중이면 재호출만 무시
+                const currentFile = bgmAudio && bgmAudio.__cskFile;
+                if (bgmAudio && currentFile === bgmFile && !bgmAudio.paused) return;
+
+                try {
                     if (bgmAudio) {
                         bgmAudio.pause();
                         bgmAudio.currentTime = 0;
                     }
-                    bgmAudio = new Audio('turn_background.mp3');
-                    bgmAudio.preload = 'auto';
-                    bgmAudio.loop = true;
-                    bgmAudio.volume = (gameState.bgmVolume ?? 0.3);
-                    bgmAudio.play().catch(e => {});
-                    return;
-                }
-                
-                // 시간제 모드: background.mp3와 background2.mp3 교대
-                const bgmFile = (gameState.roundCount % 2 === 1) ? 'background.mp3' : 'background2.mp3';
-                if (bgmAudio) {
-                    bgmAudio.pause();
-                    bgmAudio.currentTime = 0;
-                }
+                } catch (e) {}
+
                 bgmAudio = new Audio(bgmFile);
+                bgmAudio.__cskFile = bgmFile;
                 bgmAudio.preload = 'auto';
                 bgmAudio.loop = true;
                 bgmAudio.volume = (gameState.bgmVolume ?? (bgmFile === 'background2.mp3' ? 0.4 : 0.3));
-                bgmAudio.play().catch(e => {});
+
+                // loop 보조(일부 WebView에서 loop가 불안정한 경우 대비)
+                try {
+                    bgmAudio.onended = () => {
+                        try {
+                            bgmAudio.currentTime = 0;
+                            bgmAudio.play().catch(() => {});
+                        } catch (e) {}
+                    };
+                } catch (e) {}
+
+                bgmAudio.play().catch(() => {});
             } catch (e) {}
         }
 
@@ -6430,20 +7069,6 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                     
                     const roomData = await response.json();
 
-                    // 턴제 모드: 신규 탈락자 감지 시 turndeath.mp3 재생 (모두에게 들림)
-                    if (!gameState.isMobile && !roomData.endTime && roomData.gameMode === 'turn' && Array.isArray(roomData.eliminatedPlayers)) {
-                        try {
-                            const prev = Array.isArray(multiplayerState.lastEliminatedPlayers) ? multiplayerState.lastEliminatedPlayers : [];
-                            const curr = roomData.eliminatedPlayers;
-                            const prevSet = new Set(prev);
-                            const newOnes = curr.filter((pid) => !prevSet.has(pid));
-                            if (newOnes.length > 0 && gameState.sfxEnabled) {
-                                playSfxFile('turndeath.mp3', 0.85);
-                            }
-                            multiplayerState.lastEliminatedPlayers = curr.slice();
-                        } catch (e) {}
-                    }
-
                     // 🆕 방장 상태는 매 폴링마다 서버 players[0] 기준으로 동기화 (시간제 안정화)
                     // 기존 로직은 '퇴장' 이벤트에서만 host 변경을 감지해서, 일부 상황에서 방장이 아닌 것으로 표시될 수 있음
                     if (roomData && Array.isArray(roomData.players) && roomData.players.length > 0 && multiplayerState.playerId) {
@@ -6603,28 +7228,10 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                             // 플레이어 입장
                             const newPlayer = roomData.players[currentCount - 1];
                             // showToast(`${newPlayer.name}님이 입장했습니다`); // 제거
-                            // 입장 효과음 재생
-                            if (gameState.sfxEnabled) {
-                                try {
-                                    const enterSound = new Audio('enter.mp3');
-                                    enterSound.volume = 0.5;
-                                    enterSound.play().catch(e => console.log('입장 소리 재생 실패:', e));
-                                } catch (e) {
-                                    console.log('입장 소리 로드 실패:', e);
-                                }
-                            }
+                            // (앱 전용: 멀티 입장 효과음 제거)
                         } else if (currentCount < previousCount) {
                             // 플레이어 퇴장
-                            // 퇴장 효과음 재생
-                            if (gameState.sfxEnabled) {
-                                try {
-                                    const outSound = new Audio('out.mp3');
-                                    outSound.volume = 0.5;
-                                    outSound.play().catch(e => console.log('퇴장 소리 재생 실패:', e));
-                                } catch (e) {
-                                    console.log('퇴장 소리 로드 실패:', e);
-                                }
-                            }
+                            // (앱 전용: 멀티 퇴장 효과음 제거)
                             
                             // 방장 변경 체크: 첫 번째 플레이어가 방장
                             const newHostId = roomData.players.length > 0 ? roomData.players[0].id : null;
@@ -6754,16 +7361,7 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                             
                             // 생명권이 감소했을 때 (소진)
                             if (currentLife < lastLife) {
-                                // heart.mp3 재생 (모두에게 들림)
-                                if (gameState.sfxEnabled) {
-                                    try {
-                                        const heartSound = new Audio('heart.mp3');
-                                        heartSound.volume = 0.6;
-                                        heartSound.play().catch(err => console.log('[턴제] 생명권 소진 효과음 재생 실패:', err));
-                                    } catch (err) {
-                                        console.log('[턴제] 생명권 소진 효과음 로드 실패:', err);
-                                    }
-                                }
+                                // (앱 전용: 턴제 생명권 효과음 제거)
                             }
 
                             // 생명권이 증가했을 때: 해당 유저 슬롯 위에 +1/+3/+5 팝업 표시 (모두에게 보임)
@@ -8340,13 +8938,6 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                         혼자하기
                     </button>
                 `;
-                
-                // 기기 관계없이 함께하기 버튼 노출
-                buttonsHTML += `
-                    <button class="mode-start-btn together" onclick="showRoomList()">
-                        함께하기
-                    </button>
-                `;
 
                 buttonsContainer.innerHTML = buttonsHTML;
             }
@@ -8506,17 +9097,7 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                     turnTimerEl.textContent = displayValue;
                 }
                 
-                // 🎵 효과음 재생 (2초, 1초 남았을 때) - 모든 플레이어에게 공유
-                if ((timeLeftDisplay === 2 || timeLeftDisplay === 1) && timeLeftDisplay !== lastPlayedSecond) {
-                    lastPlayedSecond = timeLeftDisplay;
-                    try {
-                        const turnSecondsSound = new Audio('turn_seconds.mp3');
-                        turnSecondsSound.volume = gameState.sfxEnabled ? 1 : 0;
-                        turnSecondsSound.play().catch(err => console.log('[턴제] 효과음 재생 실패:', err));
-                    } catch (err) {
-                        console.log('[턴제] 효과음 로드 실패:', err);
-                    }
-                }
+                // (앱 전용: 턴제 효과음 제거)
                 
                 // 시간 초과 처리 (서버 turnStartTime 기준으로 정확히 시간이 지났을 때)
                 // 🆕 단어 제출이 성공했으면 turn_timeout 전송하지 않음 (중복 턴 전환 방지)
@@ -8626,7 +9207,7 @@ Tip) 세글자 이상 + 특별초성 활용하기!
         // 방 나가기 - 최초 화면으로 완전히 돌아가기
         async function leaveRoom() {
             // 🎉 토스트 메시지 표시
-            showMpToast('최초의 시작화면으로 이동합니다.');
+            // (모바일) 시작화면 이동 토스트 제거
             
             // 🚀 폴링 먼저 중지 (슬롯 덮어쓰기 방지)
             stopPolling();

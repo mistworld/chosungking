@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Sitemap: https://chosungking.com/sitemap.xml
+
+
