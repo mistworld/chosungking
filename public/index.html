@@ -5140,13 +5140,15 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                             }
                         }
                         
-                        // 생명권 토스트는 기존 규칙 유지 (턴제 모드: PC에서는 showTurnModeToast, 모바일에서만 showToast)
+// 생명권 토스트는 기존 규칙 유지 (턴제 모드: PC에서는 showTurnModeToast, 모바일에서만 showToast)
                         if (livesEarned >= 1) {
                             if (gameState.isMobile) {
                                 showScoreToast('❤️', `생명권 ${livesEarned}개 획득`, 0);
                             } else {
                                 showTurnModeToast('❤️', `생명권 ${livesEarned}개 획득`);
                             }
+                            // 하트 띠링! 소리 추가
+                            playSfxFile('heart.mp3', 1.0);
                         }
                         
                         // 🆕 자신이 단어를 입력했으므로 lastUsedWordsCount 업데이트 (상대방 효과음 중복 방지)
@@ -5825,8 +5827,14 @@ Tip) 세글자 이상 + 특별초성 활용하기!
         function playBGM() {
             try {
                 if (!audioUnlocked) unlockAudioOnce();
-                // 시간제 모드: background.mp3와 background2.mp3 교대
-                const bgmFile = (gameState.roundCount % 2 === 1) ? 'background.mp3' : 'background2.mp3';
+// 시간제 모드: background.mp3와 background2.mp3 교대
+                let bgmFile = (gameState.roundCount % 2 === 1) ? 'background.mp3' : 'background2.mp3';
+                
+                // 🔥 턴제 모드면 턴제 브금으로 강제 고정!
+                if (multiplayerState.gameMode === 'turn') {
+                    bgmFile = 'turn_background.mp3';
+                }
+
                 // ✅ 버그 수정: BGM을 sfxCache 인스턴스로 재사용하면 일부 기기에서 "2초 루프" 현상 발생
                 // 원래 방식으로 되돌리되, 같은 곡이 이미 재생 중이면 재호출만 무시
                 const currentFile = bgmAudio && bgmAudio.__cskFile;
@@ -9119,13 +9127,22 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                     turnTimerEl.textContent = displayValue;
                 }
                 
-                // (앱 전용: 턴제 효과음 제거)
+ // 🔥 턴제 2초 전 "뚜뚜" 소리!
+                if (isMyTurn && !isEliminated && (timeLeftDisplay === 2 || timeLeftDisplay === 1)) {
+                    if (lastPlayedSecond !== timeLeftDisplay) {
+                        lastPlayedSecond = timeLeftDisplay;
+                        playSfxFile('turn_seconds.mp3', 1.0);
+                    }
+                }
                 
                 // 시간 초과 처리 (서버 turnStartTime 기준으로 정확히 시간이 지났을 때)
                 // 🆕 단어 제출이 성공했으면 turn_timeout 전송하지 않음 (중복 턴 전환 방지)
                 if (isMyTurn && elapsed >= turnTimeLimit && !timeoutSent && !gameState.wordSubmitted) {
                     timeoutSent = true;
                     clearInterval(gameState.turnTimer);
+                    
+                    // 🔥 시간 초과 탈락 시 "사망" 소리!
+                    playSfxFile('turndeath.mp3', 1.0);
                     
                     // 서버에 시간 초과 신호 전송
                     fetch(`https://api.chosungking.com/api/game-state?roomId=${multiplayerState.roomId}`, {
