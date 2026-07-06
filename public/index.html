@@ -5532,6 +5532,9 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                     if (!confirm('게임을 다시 시작하시겠습니까?')) return;
                     
                     clearInterval(gameState.gameTimer);
+// ▼ 여기 두 줄 추가 ▼
+                    if (gameState.turnTimer) clearInterval(gameState.turnTimer);
+                    if (gameState.turnShuffleTimer) clearInterval(gameState.turnShuffleTimer);
                     stopBGM();
                     stopTickSound();
                     document.body.classList.remove('time-warning');
@@ -5565,6 +5568,9 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                                 try { setKeyboardLockEnabled(false); } catch (e) {}
                                 try { document.getElementById('wordInput')?.blur(); } catch (e) {}
                                 clearInterval(gameState.gameTimer);
+if (gameState.turnTimer) clearInterval(gameState.turnTimer);
+                            if (gameState.turnShuffleTimer) clearInterval(gameState.turnShuffleTimer);
+
                                 stopBGM();
                                 stopTickSound();
                                 document.body.classList.remove('time-warning');
@@ -5591,6 +5597,17 @@ Tip) 세글자 이상 + 특별초성 활용하기!
             }
             
             clearInterval(gameState.gameTimer);
+// ▼ 여기부터 8줄 추가 ▼
+    if (gameState.turnTimer) {
+        clearInterval(gameState.turnTimer);
+        gameState.turnTimer = null;
+    }
+    if (gameState.turnShuffleTimer) {
+        clearInterval(gameState.turnShuffleTimer);
+        gameState.turnShuffleTimer = null;
+    }
+    // ▲ 여기까지 추가 ▲
+
             stopBGM();
             stopTickSound();
             document.body.classList.remove('time-warning');
