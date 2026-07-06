@@ -7870,7 +7870,7 @@ if (currentCount > prevCount && lastWord && (lastWord.score || 0) > 0) {
                 }
 
                 multiplayerState.previousWordCounts[playerId] = currentCount;
-            
+            });
             // 🆕 턴제 모드: 플레이어 수 변경 시 UI 업데이트
             if (multiplayerState.gameMode === 'turn' && multiplayerState.isHost) {
                 updateStartScreenButtons();
