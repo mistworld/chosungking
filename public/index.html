@@ -5461,6 +5461,37 @@ Tip) 세글자 이상 + 특별초성 활용하기!
             else return { emoji: '🤨', message: '할많하않...', animation: 'mascotShake' };
         }
 
+// ▼ 여기서부터 복사 기능 추가 ▼
+        function copyGameResult() {
+            const totalScore = gameState.score.toLocaleString();
+            const totalWords = gameState.usedWords.length;
+            
+            // TOP 3 단어 추출
+            const wordsWithScores = gameState.usedWords.map(word => {
+                return { word: word, score: calculateScore(word, getChosung(word)).total };
+            });
+            const top3 = wordsWithScores.sort((a, b) => b.score - a.score).slice(0, 3);
+            const top3Text = top3.map(w => `[${w.word}]`).join(', ');
+
+            const shareText = `👑 초성킹 (시간제 싱글)\n💯 점수: ${totalScore}점\n📝 맞춘 단어: ${totalWords}개\n🔥 TOP 3: ${top3Text || '없음'}\n🔗 같이 배틀 뜰 사람? chosungking.com`;
+
+            // 복사 로직 (모바일 호환성 100%)
+            const textArea = document.createElement("textarea");
+            textArea.value = shareText;
+            textArea.style.position = "fixed";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showCskInfoToast('📋 결과가 복사되었습니다!', 2000);
+            } catch (err) {
+                showCskInfoToast('❌ 복사 실패', 2000);
+            }
+            document.body.removeChild(textArea);
+        }
+        // ▲ 여기까지 복사 기능 추가 ▲
+
         function showGameEndScreen() {
             const endData = getGameEndMessage(gameState.score);
             
@@ -5494,8 +5525,9 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                         <h3>📚 학습 노트</h3>
                         <div id="studyWordList" class="word-list"></div>
                     </div>
-                    <div class="end-buttons">
+<div class="end-buttons">
                         <button class="end-btn primary" onclick="closeGameEndScreen(); setTimeout(startGame, 100);">다시 하기</button>
+                        <button class="end-btn primary" onclick="copyGameResult()" style="background: linear-gradient(135deg, #74b9ff, #0984e3);">결과 공유</button>
                         <button class="end-btn secondary" onclick="requestExitApp()">앱종료</button>
                     </div>
                 </div>
@@ -7827,12 +7859,17 @@ if (gameState.turnTimer) clearInterval(gameState.turnTimer);
                 const prevCount = multiplayerState.previousWordCounts[playerId] || 0;
                 const currentCount = words.length;
 
-                if (currentCount > prevCount && lastWord && (lastWord.score || 0) > 0) {
+if (currentCount > prevCount && lastWord && (lastWord.score || 0) > 0) {
                     showScorePopup(playerId, lastWord.score);
+                    
+                    // ▼ 여기서부터 채찍 소리 추가 ▼
+                    if (multiplayerState.gameMode !== 'turn' && playerId !== multiplayerState.playerId && lastWord.score >= 400) {
+                        playSfxFile('whip.mp3', 1.0);
+                    }
+                    // ▲ 여기까지 채찍 소리 추가 ▲
                 }
 
                 multiplayerState.previousWordCounts[playerId] = currentCount;
-            });
             
             // 🆕 턴제 모드: 플레이어 수 변경 시 UI 업데이트
             if (multiplayerState.gameMode === 'turn' && multiplayerState.isHost) {
