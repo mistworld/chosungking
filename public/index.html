@@ -7493,9 +7493,12 @@ if (gameState.turnTimer) clearInterval(gameState.turnTimer);
                     updateScoreboard(roomData);
                 }
                 
-                // 멀티플레이어: 서버 startTime 기준으로 타이머 동기화 (부드러운 보정) - 시간제 모드만
+// 멀티플레이어: 서버 startTime 기준으로 타이머 동기화 (부드러운 보정) - 시간제 모드만
                 if (gameState.gameRunning && roomData.startTime && roomData.gameMode !== 'turn') {
-                    const elapsedTime = Math.floor((Date.now() - roomData.startTime) / 1000);
+                    // ▼ 여기 2줄 수정 (시계 오차를 계산해서 완벽하게 동기화) ▼
+                    const serverNowEstimate = Date.now() - (multiplayerState.serverTimeOffset || 0);
+                    const elapsedTime = Math.floor((serverNowEstimate - roomData.startTime) / 1000);
+                    
                     const serverTimeLeft = Math.max(0, 180 - elapsedTime);
                     
                     // 서버 시간과 클라이언트 시간 차이 계산
@@ -8115,7 +8118,7 @@ if (currentCount > prevCount && lastWord && (lastWord.score || 0) > 0) {
                 const requestBody = {
                     action: action,
                     consonants: gameState.currentConsonants,
-                    startTime: Date.now(),
+                    startTime: Date.now() - (multiplayerState.serverTimeOffset || 0),
                     timeLeft: 180,
                     gameMode: multiplayerState.gameMode || 'time', // 🆕 게임 모드 전송
                     players: players, // 🆕 플레이어 목록 전송
