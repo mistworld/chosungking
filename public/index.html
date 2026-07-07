@@ -4947,7 +4947,7 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                    currentChars.some(ch => SPECIAL_CONSONANTS.includes(ch));
         }
 
-        async function checkWord() {
+async function checkWord() {
             const input = document.getElementById('wordInput');
             let word = input.value.trim();
             if (!word) return;
@@ -4959,7 +4959,7 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                 }
             } catch (e) {}
 
-// 🆕 턴제 모드에서 채팅 처리 (연습 모드일 때는 무시하고 혼자 생존으로 진행!)
+            // 🆕 턴제 모드에서 채팅 처리 (연습 모드일 때는 무시하고 혼자 생존으로 진행!)
             if (multiplayerState.isMultiplayer && gameState.gameRunning && multiplayerState.gameMode === 'turn' && !gameState.isWarmup) {
                 const lastRoomData = multiplayerState.lastRoomData;
                 if (lastRoomData) {
@@ -5016,7 +5016,6 @@ Tip) 세글자 이상 + 특별초성 활용하기!
 
             // 띄어쓰기 제거 후 길이 체크
             if (wordForGame.length < 2 || wordForGame.length > 6) {
-                // 🆕 PC에서는 항상 updateEmoji 사용, 모바일에서만 showToast 사용
                 if (gameState.isMobile) {
                     showScoreToast('😓', '2~6글자만 가능해요', 0);
                 } else {
@@ -5029,7 +5028,6 @@ Tip) 세글자 이상 + 특별초성 활용하기!
 
             const isValid = hasEnoughConsonants(wordChosung, currentChars);
             if (!isValid) {
-                // 🆕 PC에서는 항상 updateEmoji 사용, 모바일에서만 showToast 사용
                 if (gameState.isMobile) {
                     showScoreToast('😓', '초성을 확인해주세요', 0);
                 } else {
@@ -5057,17 +5055,13 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                 if (multiplayerState.isMultiplayer && multiplayerState.gameMode === 'turn') {
                     // 중복 단어 체크 (클라이언트 측)
                     const wordLower = wordForGame.toLowerCase();
-                    // 🚀 수정: usedWords가 객체 배열이므로 .word로 비교
                     const isDuplicate = multiplayerState.usedWords && multiplayerState.usedWords.some(w => {
                         const wordStr = typeof w === 'string' ? w : w.word;
                         return wordStr === wordLower;
                     });
                     
                     if (isDuplicate) {
-                        // 중복 단어 처리: 단어 뜻 영역에 메시지 표시
                         updateDefinition('이미 나왔던 단어입니다');
-
-                        // 토스트 메시지 (턴제 모드: PC에서는 showTurnModeToast, 모바일에서만 showToast)
                         if (gameState.isMobile) {
                             showScoreToast('😓', '이미 나왔던 단어입니다', 0);
                         } else {
@@ -5078,8 +5072,6 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                         return;
                     }
                     
-                    // 턴제 모드에서는 서버에서 턴 확인 및 단어 제출
-                    // 🚀 속도 개선: 타임아웃 2초 설정
                     const controller = new AbortController();
                     const timeoutId = setTimeout(() => controller.abort(), 2000);
                     
@@ -5114,42 +5106,34 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                     const data = await response.json();
 
                     if (data.valid) {
-                        // 단어 뜻 표시 (API 응답 구조에 맞게 수정)
                         if (data.definitions && data.definitions.length > 0 && data.definitions[0].definition) {
                             updateDefinition(data.definitions[0].definition);
                         } else if (data.definition) {
-                            // 하위 호환성
                             updateDefinition(data.definition);
                         }
                         
-                        // 생명권 획득 계산 (효과음/토스트용)
                         const wordLength = wordForGame.length;
                         const hasSpecial = hasSpecialConsonant(wordForGame, currentChars);
                         let livesEarned = 0;
                         if (wordLength === 2 && hasSpecial) {
-                            livesEarned = 1; // 2글자 + 특별초성
+                            livesEarned = 1; 
                         } else if (wordLength === 2) {
-                            livesEarned = 0; // 2글자 일반
+                            livesEarned = 0; 
                         } else if (wordLength === 3) {
-                            livesEarned = 1; // 3글자
+                            livesEarned = 1; 
                         } else if (wordLength === 4) {
-                            livesEarned = 3; // 4글자
+                            livesEarned = 3; 
                         } else if (wordLength >= 5) {
-                            livesEarned = 5; // 5글자+
+                            livesEarned = 5; 
                         }
                         
-                        // 효과음 재생 규칙 (턴제 전용):
-                        // - 3글자 이상 맞췄을 때만 점수 효과음
-                        //   - 3글자: 100 110 120.mp3
-                        //   - 4글자 이상: 400.mp3
                         if (wordLength >= 3) {
                             if (wordLength === 3) {
-                                playScoreSound(100); // 100 110 120.mp3
+                                playScoreSound(100); 
                             } else if (wordLength >= 4) {
-                                playScoreSound(400); // 400.mp3
+                                playScoreSound(400); 
                             }
                         } else {
-                            // 2글자는 기존 로직 유지 (생명권 유무에 따라 100/30 선택)
                             if (livesEarned >= 1) {
                                 playScoreSound(100);
                             } else {
@@ -5157,31 +5141,23 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                             }
                         }
                         
-// 생명권 토스트는 기존 규칙 유지 (턴제 모드: PC에서는 showTurnModeToast, 모바일에서만 showToast)
                         if (livesEarned >= 1) {
                             if (gameState.isMobile) {
                                 showScoreToast('❤️', `생명권 ${livesEarned}개 획득`, 0);
                             } else {
                                 showTurnModeToast('❤️', `생명권 ${livesEarned}개 획득`);
                             }
-                            // 하트 띠링! 소리 추가
                             playSfxFile('heart.mp3', 1.0);
                         }
                         
-                        // 🆕 자신이 단어를 입력했으므로 lastUsedWordsCount 업데이트 (상대방 효과음 중복 방지)
                         if (multiplayerState.usedWords) {
-                            multiplayerState.lastUsedWordsCount = multiplayerState.usedWords.length + 1; // +1은 서버에 추가될 예정
+                            multiplayerState.lastUsedWordsCount = multiplayerState.usedWords.length + 1; 
                         }
-                        // 🆕 자신이 방금 입력했다는 플래그 설정 (폴링에서 중복 효과음 방지)
                         multiplayerState.justSubmittedWord = true;
                         setTimeout(() => {
                             multiplayerState.justSubmittedWord = false;
-                        }, 1000); // 1초 후 플래그 해제 (폴링 주기 고려)
+                        }, 1000); 
                         
-                        // 서버에 단어 제출
-                        console.log('[턴제] 단어 제출:', wordForGame, '플레이어:', multiplayerState.players.length);
-                        
-                        // 🆕 단어 제출 플래그 설정 (turn_timeout 중복 방지)
                         gameState.wordSubmitted = true;
                         
                         const submitResponse = await fetch(`https://api.chosungking.com/api/game-state?roomId=${multiplayerState.roomId}`, {
@@ -5194,30 +5170,22 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                                 isValid: true,
                                 wordLength: wordForGame.length,
                                 hasSpecialConsonant: hasSpecialConsonant(wordForGame, currentChars)
-                                // 🚀 players 배열 제거: 서버의 state.players만 사용
                             })
                         });
                         
                         if (submitResponse.ok) {
-                            console.log('[턴제] 단어 제출 성공, 턴 전환 대기');
-                            // 🆕 단어 제출 후 서버 처리 시간을 고려하여 폴링 강제 실행
                             if (gameState.pollingAbortController) {
-                                gameState.pollingAbortController.abort(); // 기존 폴링 취소
+                                gameState.pollingAbortController.abort(); 
                             }
-                            // 서버에서 턴 전환이 완료될 시간을 고려하여 폴링 시작
                             setTimeout(() => {
                                 startPolling();
-                            }, 300); // 300ms 후 폴링 (서버 처리 시간 고려)
+                            }, 300); 
                         }
                         
-                        // 입력 필드 초기화
                         input.value = '';
                         input.focus();
                     } else {
-                        // 오답 처리: 단어 뜻 영역에 메시지 표시
                         updateDefinition('사전에 없는 단어입니다');
-                        
-                        // 토스트 메시지 (턴제 모드: PC에서는 showTurnModeToast, 모바일에서만 showToast)
                         if (gameState.isMobile) {
                             showScoreToast('😓', '사전에 없는 단어입니다', 0);
                         } else {
@@ -5226,12 +5194,10 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                         playWrongSound();
                         input.value = '';
                     }
-                    return; // 턴제 모드는 여기서 종료 (서버에서 턴 전환 처리)
+                    return; 
                 }
                 
-                // 시간제 모드: 기존 로직
-                // 서버 검증은 띄어쓰기 제거한 단어로
-                // 🚀 속도 개선: 타임아웃 2초 설정
+                // 시간제 모드 로직
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 2000);
                 
@@ -5266,7 +5232,6 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                 const data = await response.json();
 
                 if (data.valid) {
-                    // 점수 계산도 띄어쓰기 제거한 단어로
                     const score = calculateScore(wordForGame, wordChosung);
                     gameState.score += score.total;
                     gameState.usedWords.push(wordForGame);
@@ -5299,26 +5264,24 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                         message = '기본이지!';
                     }
                     
-                    // 🆕 PC에서는 항상 updateEmoji 사용, 모바일에서만 showToast 사용
-if (gameState.isMobile) {
-                                showScoreToast(emoji, message, score.total);
-                            } else {
-                                updateEmoji(emoji, message, score.total);
-                            }
-                            playScoreSound(score.total);
+                    if (gameState.isMobile) {
+                        showScoreToast(emoji, message, score.total);
+                    } else {
+                        updateEmoji(emoji, message, score.total);
+                    }
+                    playScoreSound(score.total);
 
-                            input.value = '';
-                            input.focus();
+                    input.value = '';
+                    input.focus();
 
-// ==========================================
-                            // 🆕 혼자하기 턴제(생존 모드)라면 정답 맞출 때마다 5초 타이머 리셋!
-                            // ==========================================
-                            if (multiplayerState.gameMode === 'turn' && (!multiplayerState.isMultiplayer || gameState.isWarmup)) {
-                                startSoloTurnTimer(); // 타이머 다시 5초로 꽉 채우기!
-                                shuffleConsonants('random'); // 단어 맞출 때마다 초성도 섞어주면 더 쫄깃해요!
-                            }
-                        } else {
-                            // 🆕 PC에서는 항상 updateEmoji 사용, 모바일에서만 showToast 사용
+                    // ==========================================
+                    // 🆕 혼자하기 턴제(생존 모드)라면 정답 맞출 때마다 5초 타이머 리셋!
+                    // ==========================================
+                    if (multiplayerState.gameMode === 'turn' && (!multiplayerState.isMultiplayer || gameState.isWarmup)) {
+                        startSoloTurnTimer(); // 타이머 다시 5초로 꽉 채우기!
+                        shuffleConsonants('random'); // 단어 맞출 때마다 초성도 섞어주면 더 쫄깃해요!
+                    }
+                } else {
                     if (gameState.isMobile) {
                         showScoreToast('😓', '올바른 단어가 아니에요', 0);
                     } else {
