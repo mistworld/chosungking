@@ -4036,18 +4036,33 @@
                     </div>
             </div>
 
-            <div class="best-score-display" id="bestScoreDisplay">
-                최고 기록: 0점
+<div class="best-score-display" id="bestScoreDisplay" style="display: flex; flex-direction: column; gap: 5px;">
+                <div>🏆 시간제 최고: <span id="bestScoreTimeDisplay">0점</span></div>
+                <div style="font-size: 0.85em; color: #00b894;">⏳ 턴제 최장 생존: <span id="bestScoreTurnDisplay">0초</span></div>
             </div>
 
-            <!-- 게임 모드 선택 버튼 -->
             <div class="game-mode-buttons" id="gameModeButtons">
-                <button class="mode-start-btn solo" onclick="safeCall('startGame')">
+                <button class="mode-start-btn solo" onclick="showSoloModeModal()">
                     혼자하기
                 </button>
                 <button class="mode-start-btn together" onclick="safeCall('showRoomList')">
                     함께하기
                 </button>
+            </div>
+
+            <div id="soloModeModal" class="mp-modal-overlay hidden">
+                <div class="mp-modal-content" style="max-width: 350px; padding: 30px;">
+                    <div class="mp-name-title" style="margin-bottom: 20px; font-size: 1.5em;">🎮 혼자하기 모드 선택</div>
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <button class="mp-create-solo-btn" onclick="startSoloTimeMode()" style="width: 100%; padding: 15px; font-size: 1.1em; margin: 0;">
+                            ⏰ 시간제 (점수 기록)
+                        </button>
+                        <button class="mp-create-solo-btn" onclick="startSoloTurnMode()" style="width: 100%; padding: 15px; font-size: 1.1em; margin: 0; background: linear-gradient(135deg, #6bff6b, #8a8aff);">
+                            🔥 턴제 (무한 생존)
+                        </button>
+                    </div>
+                    <button class="mp-close-btn" onclick="closeSoloModeModal()" style="margin-top: 15px;">닫기</button>
+                </div>
             </div>
             <script>
                 (function () {
@@ -4575,8 +4590,10 @@ Tip) 세글자 이상 + 특별초성 활용하기!
             }
         }
         
-        // 게임 상태
+// 게임 상태
         const gameState = {
+            bestTurnSurvivalTime: 0, // 🆕 턴제 최고 생존 시간(초)
+            soloSurvivalStartTime: null, // 🆕 혼자하기 턴제 시작 시간
             score: 0,
             timeLeft: 180,
             usedWords: [],
@@ -4942,8 +4959,8 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                 }
             } catch (e) {}
 
-            // 🆕 턴제 모드에서 채팅 처리
-            if (multiplayerState.isMultiplayer && gameState.gameRunning && multiplayerState.gameMode === 'turn') {
+// 🆕 턴제 모드에서 채팅 처리 (연습 모드일 때는 무시하고 혼자 생존으로 진행!)
+            if (multiplayerState.isMultiplayer && gameState.gameRunning && multiplayerState.gameMode === 'turn' && !gameState.isWarmup) {
                 const lastRoomData = multiplayerState.lastRoomData;
                 if (lastRoomData) {
                     const isEliminated = lastRoomData.eliminatedPlayers?.includes(multiplayerState.playerId) || false;
@@ -5283,17 +5300,25 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                     }
                     
                     // 🆕 PC에서는 항상 updateEmoji 사용, 모바일에서만 showToast 사용
-                    if (gameState.isMobile) {
-                        showScoreToast(emoji, message, score.total);
-                    } else {
-                        updateEmoji(emoji, message, score.total);
-                    }
-                    playScoreSound(score.total);
+if (gameState.isMobile) {
+                                showScoreToast(emoji, message, score.total);
+                            } else {
+                                updateEmoji(emoji, message, score.total);
+                            }
+                            playScoreSound(score.total);
 
-                    input.value = '';
-                    input.focus();
-                } else {
-                    // 🆕 PC에서는 항상 updateEmoji 사용, 모바일에서만 showToast 사용
+                            input.value = '';
+                            input.focus();
+
+// ==========================================
+                            // 🆕 혼자하기 턴제(생존 모드)라면 정답 맞출 때마다 5초 타이머 리셋!
+                            // ==========================================
+                            if (multiplayerState.gameMode === 'turn' && (!multiplayerState.isMultiplayer || gameState.isWarmup)) {
+                                startSoloTurnTimer(); // 타이머 다시 5초로 꽉 채우기!
+                                shuffleConsonants('random'); // 단어 맞출 때마다 초성도 섞어주면 더 쫄깃해요!
+                            }
+                        } else {
+                            // 🆕 PC에서는 항상 updateEmoji 사용, 모바일에서만 showToast 사용
                     if (gameState.isMobile) {
                         showScoreToast('😓', '올바른 단어가 아니에요', 0);
                     } else {
@@ -5312,7 +5337,133 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                 input.value = '';
             }
         }
+// ==========================================
+        // 🆕 혼자하기 턴제 (무한 생존 모드) 핵심 엔진
+        // ==========================================
+        function startSoloSurvivalGame(isWarmup = false) {
+            gameState.isWarmup = isWarmup; // 🆕 지금이 '비밀 연습 모드'인지 스위치 달기
+            // 1. 상태 초기화
+            gameState.score = 0;
+            gameState.usedWords = [];
+            gameState.wordDefinitions = {};
+            gameState.gameRunning = true;
+            gameState.tickSoundPlaying = false;
+            gameState.roundCount = 1; 
+            gameState.soloSurvivalStartTime = Date.now(); // ⏰ 생존 시작 시간 기록!
 
+            // 2. 초성 뽑기
+            gameState.originalConsonants = getRandomConsonants();
+            gameState.currentConsonants = [...gameState.originalConsonants];
+            displayConsonants(gameState.currentConsonants);
+
+            // 3. 화면 전환 (시작화면 끄고 게임화면 켜기)
+            document.getElementById('gameStartSection').classList.add('hidden');
+            document.getElementById('gameScreen').classList.remove('hidden');
+
+            // 4. UI 텍스트 초기화
+            document.getElementById('score').textContent = 0;
+            if (gameState.isMobile) {
+                updateDefinition('단어를 입력하면 뜻이 표시됩니다');
+            } else {
+                updateEmoji('🤔', '단어를 입력해주세요', 0);
+                updateDefinition('단어를 입력하면 뜻이 표시됩니다');
+            }
+
+            const input = document.getElementById('wordInput');
+            input.value = '';
+            setTimeout(() => input.focus(), 300);
+
+            try {
+                if (isNativeApp && gameState.isMobile) setKeyboardLockEnabled(true);
+            } catch (e) {}
+
+            document.body.classList.remove('time-warning');
+
+            // 5. 화면을 '턴제(어두운 톤)' 모드로 변경!
+            updateGameModeUI('turn');
+
+            if (gameState.bgmEnabled) playBGM();
+
+            // 6. 지옥의 5초 타이머 시작!
+            startSoloTurnTimer();
+        }
+
+        function startSoloTurnTimer() {
+            // 기존 타이머 지우기
+            if (gameState.turnTimer) clearInterval(gameState.turnTimer);
+
+            let turnTimeLimit = 5; // ⏱️ 난이도: 5초 고정!
+            const turnTimerEl = document.getElementById('turnModeTimer');
+            if (turnTimerEl) turnTimerEl.textContent = turnTimeLimit;
+
+            // 내 턴이니까 입력창에 핑크색 깜빡임 효과 켜기
+            const wordInput = document.getElementById('wordInput');
+            if (wordInput) {
+                wordInput.classList.add('my-turn');
+                wordInput.placeholder = '단어를 입력하세요';
+                wordInput.disabled = false;
+            }
+
+            let timeLeft = turnTimeLimit;
+            let lastPlayedSecond = -1;
+
+            // 0.1초마다 시간 줄어들게 만들기
+            gameState.turnTimer = setInterval(() => {
+                if (!gameState.gameRunning) {
+                    clearInterval(gameState.turnTimer);
+                    return;
+                }
+
+                timeLeft -= 0.1; 
+                const displayTime = Math.ceil(timeLeft);
+
+                if (turnTimerEl && displayTime >= 0) {
+                    turnTimerEl.textContent = displayTime;
+                }
+
+                // 2초, 1초 남았을 때 뚜뚜 경고음!
+                if ((displayTime === 2 || displayTime === 1) && lastPlayedSecond !== displayTime) {
+                    lastPlayedSecond = displayTime;
+                    playSfxFile('turn_seconds.mp3', 1.0);
+                }
+
+                // 0초가 되면 쥬금 ㅠㅠ (생존 실패)
+                if (timeLeft <= 0) {
+                    clearInterval(gameState.turnTimer);
+                    playSfxFile('turndeath.mp3', 1.0); // 사망 효과음 꽥
+                    endSoloSurvivalGame(); // 게임 오버 함수 호출
+                }
+            }, 100);
+        }
+
+function endSoloSurvivalGame() {
+            gameState.gameRunning = false;
+            if (gameState.turnTimer) clearInterval(gameState.turnTimer);
+
+            // 🆕 대기방 연습 모드에서 죽은 거라면? 점수 저장 없이 바로 새 연습 무한 반복!
+            if (gameState.isWarmup) {
+                startSoloSurvivalGame(true);
+                return;
+            }
+
+            // 내가 몇 초나 살았는지 계산
+            const survivedSeconds = Math.floor((Date.now() - gameState.soloSurvivalStartTime) / 1000);
+
+            // 최고 기록 깼으면 저장!
+            if (survivedSeconds > gameState.bestTurnSurvivalTime) {
+                gameState.bestTurnSurvivalTime = survivedSeconds;
+                localStorage.setItem('chosungBestTurnTime', survivedSeconds.toString());
+                updateBestScoreDisplay();
+                console.log(`🏆 턴제 최고 생존 시간 갱신: ${survivedSeconds}초`);
+            }
+
+            // 일단 알림창으로 죽었다고 띄워주기 (나중에 결과 모달로 예쁘게 바꿀게요!)
+            alert(`🔥 생존 실패!\n\n버틴 시간: ${formatSurvivalTime(survivedSeconds)}\n달성 점수: ${gameState.score}점`);
+
+            // 메인 화면으로 돌려보내기
+            endGame();
+        }
+        // ==========================================
         function startGame() {
             // 멀티플레이 점수 팝업/단어 카운트 초기화
             multiplayerState.previousWordCounts = {};
@@ -6005,17 +6156,57 @@ if (gameState.turnTimer) clearInterval(gameState.turnTimer);
             }
         }
 
-        function loadBestScore() {
-            const saved = localStorage.getItem('chosungBestScore');
-            gameState.bestScore = saved ? parseInt(saved) : 0;
+function loadBestScore() {
+            const savedScore = localStorage.getItem('chosungBestScore');
+            const savedTime = localStorage.getItem('chosungBestTurnTime'); // 🆕 턴제 생존 시간 불러오기
+            
+            gameState.bestScore = savedScore ? parseInt(savedScore) : 0;
+            gameState.bestTurnSurvivalTime = savedTime ? parseInt(savedTime) : 0;
+            
             updateBestScoreDisplay();
         }
 
-        function updateBestScoreDisplay() {
-            document.getElementById('bestScoreDisplay').textContent = `🏆 최고 기록: ${gameState.bestScore}점`;
-            document.getElementById('currentBestScore').textContent = gameState.bestScore;
+        function formatSurvivalTime(seconds) {
+            if (!seconds) return "0초";
+            const m = Math.floor(seconds / 60);
+            const s = seconds % 60;
+            return m > 0 ? `${m}분 ${s}초` : `${s}초`;
         }
 
+        function updateBestScoreDisplay() {
+            // 메인 화면 업데이트
+            const timeDisplay = document.getElementById('bestScoreTimeDisplay');
+            const turnDisplay = document.getElementById('bestScoreTurnDisplay');
+            
+            if (timeDisplay) timeDisplay.textContent = `${gameState.bestScore}점`;
+            if (turnDisplay) turnDisplay.textContent = formatSurvivalTime(gameState.bestTurnSurvivalTime);
+            
+            // 기존 게임 화면 상단 인포 박스 업데이트 (시간제용)
+            const currentBest = document.getElementById('currentBestScore');
+            if (currentBest) currentBest.textContent = gameState.bestScore;
+        }
+
+        // 🆕 모달 열기/닫기 및 혼자하기 시작 함수
+        function showSoloModeModal() {
+            document.getElementById('soloModeModal').classList.remove('hidden');
+        }
+
+        function closeSoloModeModal() {
+            document.getElementById('soloModeModal').classList.add('hidden');
+        }
+
+        function startSoloTimeMode() {
+            closeSoloModeModal();
+            multiplayerState.gameMode = 'time'; 
+            safeCall('startGame'); 
+        }
+
+        function startSoloTurnMode() {
+            closeSoloModeModal();
+            multiplayerState.gameMode = 'turn';
+            // 나중에 만들 생존 모드 로직 호출
+            alert("턴제 생존 모드는 2단계에서 마저 코드 넣고 돌아갑니다! 기다려주세요!");
+        }
         function updateStartScreenForMobile() {
             const isMobile = !!(gameState && gameState.isMobile);
             const extra = document.getElementById('mobileStartExtra');
@@ -6033,8 +6224,8 @@ if (gameState.turnTimer) clearInterval(gameState.turnTimer);
                 if (startInstruction) startInstruction.style.display = 'none';
                 // 모바일에서도 함께하기 버튼은 유지 (PC 권장 토스트는 showRoomList()가 처리)
                 if (togetherBtn) togetherBtn.style.display = '';
-                if (soloBtn) soloBtn.textContent = '게임시작';
-                if (bestScoreEl) bestScoreEl.textContent = `최고기록 : ${gameState.bestScore}점`;
+if (soloBtn) soloBtn.textContent = '게임시작';
+                updateBestScoreDisplay();
                 if (crown) crown.style.display = 'none';
                 if (pcTitle) pcTitle.style.display = 'none';
             } else {
@@ -6042,8 +6233,8 @@ if (gameState.turnTimer) clearInterval(gameState.turnTimer);
                 if (mobileTitle) mobileTitle.style.display = 'none';
                 if (startInstruction) startInstruction.style.display = '';
                 if (togetherBtn) togetherBtn.style.display = '';
-                if (soloBtn) soloBtn.textContent = '혼자하기';
-                if (bestScoreEl) bestScoreEl.textContent = `🏆 최고 기록: ${gameState.bestScore}점`;
+if (soloBtn) soloBtn.textContent = '혼자하기';
+                updateBestScoreDisplay();
                 if (crown) crown.style.display = '';
                 if (pcTitle) pcTitle.style.display = '';
             }
@@ -6780,12 +6971,16 @@ if (gameState.turnTimer) clearInterval(gameState.turnTimer);
                     }, 100);
                 }
                 
-                startPolling();
+startPolling();
                 updateStartScreenButtons();
                 // showToast('게임 시작을 기다리는 중...'); // 제거
+
+                // 🆕 대기실에 방장 혼자 있다면? 지루하지 않게 바로 비밀 연습 게임 시작!
+                if (roomData.gameMode === 'turn' && multiplayerState.isHost && multiplayerState.lastPlayerCount === 1) {
+                    startSoloSurvivalGame(true);
+                }
                 
                 // 🆕 폴링 시작 후 즉시 한 번 더 슬롯 업데이트 (입장자 동기화 보장)
-                setTimeout(() => {
                     if (multiplayerState.isMultiplayer && multiplayerState.roomId) {
                         fetch(`https://api.chosungking.com/api/game-state?roomId=${multiplayerState.roomId}&playerId=${encodeURIComponent(multiplayerState.playerId || '')}`, {
                             cache: 'no-cache'
@@ -7297,10 +7492,24 @@ if (gameState.turnTimer) clearInterval(gameState.turnTimer);
                         const previousCount = multiplayerState.lastPlayerCount;
                         const currentCount = roomData.players.length;
                         
-                        if (currentCount > previousCount) {
+if (currentCount > previousCount) {
                             // 플레이어 입장
                             const newPlayer = roomData.players[currentCount - 1];
-                            // showToast(`${newPlayer.name}님이 입장했습니다`); // 제거
+                            
+                            // ⚔️ 난입 시스템: 연습 모드 중에 누군가 들어오면 즉시 본 게임 강제 시작!
+                            if (gameState.isWarmup && currentCount >= 2) {
+                                gameState.isWarmup = false; // 연습 끝!
+                                if (gameState.turnTimer) clearInterval(gameState.turnTimer);
+                                
+                                // 모바일/PC 상관없이 토스트 띄우기
+                                if (gameState.isMobile) {
+                                    showScoreToast('⚔️', '도전자 입장! 본 게임을 시작합니다.', 0);
+                                } else {
+                                    showTurnModeToast('⚔️', '도전자 입장! 본 게임을 시작합니다.');
+                                }
+                                
+                                sendGameStart(true); // 서버에 찐 멀티 1라운드 시작 신호 발사!
+                            }
                             // (앱 전용: 멀티 입장 효과음 제거)
                         } else if (currentCount < previousCount) {
                             // 플레이어 퇴장
