@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>초성킹 - 초성게임 | 두뇌게임 | 어휘력 증진</title>
+    <title>초성킹 - 초성게임 | 두뇌게임 | 어휘력증진</title>
     <meta name="description" content="긴 단어일수록 대박! 초성으로 어휘력을 키우는 두뇌게임">
     <meta name="keywords" content="초성킹, 초성게임, 초성배틀, 두뇌게임, 어휘력증진, 어휘력게임, 한글게임, 단어게임, 워들">
     <meta name="naver-site-verification" content="778297e616c150e7c42d434234c45bdfa467303e" />
@@ -4733,7 +4733,7 @@ Tip) 세글자 이상 + 특별초성 활용하기!
             // shuffleCount는 타이머에서 관리하므로 여기서는 증가시키지 않음
         }
 
-        function getChosung(str) {
+function getChosung(str) {
             const chosungList = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
             const result = [];
             for (let i = 0; i < str.length; i++) {
@@ -4763,10 +4763,10 @@ Tip) 세글자 이상 + 특별초성 활용하기!
         }
 
         function updateEmoji(emoji, message, score) {
-            if (gameState.isMobile) return; // 모바일에서는 이모티콘 표시 안함
+            if (gameState.isMobile) return; 
             
             const emojiDisplay = document.getElementById('emojiDisplay');
-            if (!emojiDisplay) return; // 요소가 없으면 (턴모드 등) 리턴
+            if (!emojiDisplay) return; 
             
             emojiDisplay.innerHTML = `
                 <div>${emoji}</div>
@@ -4774,11 +4774,9 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                 <div class="emoji-score">+${score}점</div>
             `;
             
-            // 모든 애니메이션 클래스 제거
             emojiDisplay.classList.remove('emoji-score-10', 'emoji-score-30', 'emoji-score-50', 
                                         'emoji-score-100', 'emoji-score-400', 'emoji-score-500');
             
-            // 점수별 애니메이션 클래스 추가
             if (score >= 500) {
                 emojiDisplay.classList.add('emoji-score-500');
             } else if (score >= 400) {
@@ -4799,9 +4797,7 @@ Tip) 세글자 이상 + 특별초성 활용하기!
         }
 
         function showScoreToast(emoji, message, score) {
-            // 모바일에서만 표시 (화면 폭 기반 isPC()는 모바일 가로/태블릿에서 오판될 수 있어 사용하지 않음)
             if (!gameState.isMobile) return;
-            // 🆕 턴제 모드에서는 showTurnModeToast 사용 (PC에서도 표시되어야 함)
             if (document.body.classList.contains('turn-mode')) {
                 showTurnModeToast(emoji, message);
                 return;
@@ -4814,7 +4810,6 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                 document.body.appendChild(root);
             }
 
-            // 이전 토스트 제거
             const oldToast = root.querySelector('.toast-message');
             if (oldToast) oldToast.remove();
 
@@ -4823,16 +4818,12 @@ Tip) 세글자 이상 + 특별초성 활용하기!
             toast.innerHTML = `<div class="toast-score">+${score}점</div><div class="toast-text"><span class="toast-emoji">${emoji}</span><span class="toast-msg">${message}</span></div>`;
             root.appendChild(toast);
 
-            // 키보드/기기별 뷰포트에 맞춰 위치 자동 보정
             try {
                 const vv = window.visualViewport;
                 const vh = vv && vv.height ? vv.height : window.innerHeight;
                 const offsetTop = vv && vv.offsetTop ? vv.offsetTop : 0;
-                // ✅ 기종 무관 기준점: 입력창(직사각형) 하단에서 출발
                 const inputEl = document.getElementById('wordInput');
                 const inputRect = inputEl && inputEl.getBoundingClientRect ? inputEl.getBoundingClientRect() : null;
-                // ✅ 기준점: 입력창 '아랫변(bottom)'
-                // 토스트가 입력창 아래로 거의 내려가지 않도록, 토스트 바닥을 입력창 아랫변에 맞춤
                 const toastRect = toast && toast.getBoundingClientRect ? toast.getBoundingClientRect() : null;
                 const toastH = toastRect && toastRect.height ? toastRect.height : 86;
                 const anchorY = inputRect
@@ -4842,16 +4833,8 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                 const maxY = Math.round(offsetTop + vh - 16);
                 const targetY = Math.max(minY, Math.min(maxY, anchorY));
                 toast.style.top = targetY + 'px';
-                // 토스트 위치: 아주 살짝 오른쪽으로 이동 (모바일에서만)
                 toast.style.left = '52%';
                 toast.style.transform = 'translateX(-50%)';
-            } catch (e) {}
-
-            // 디버그: 토스트 실행 여부 확인용 (배포 확인 후 제거 가능)
-            try {
-                toast.setAttribute('data-toast', '1');
-                window.__ck_lastToastAt = Date.now();
-                window.__ck_lastToastMessage = message;
             } catch (e) {}
 
             setTimeout(() => {
@@ -4861,13 +4844,10 @@ Tip) 세글자 이상 + 특별초성 활용하기!
             }, 1350);
         }
         
-        // 🆕 턴제 모드용 토스트 함수 (PC에서도 표시)
         function showTurnModeToast(emoji, message) {
-            // PC 턴제에서는 토스트를 띄우지 않음 (원래처럼 좌측 슬롯 UI로만 피드백)
             try {
                 if (!gameState.isMobile && document.body.classList.contains('turn-mode')) return;
             } catch (e) {}
-            // 이전 토스트 제거
             let root = document.getElementById('toastRoot');
             if (!root) {
                 root = document.createElement('div');
@@ -4880,7 +4860,6 @@ Tip) 세글자 이상 + 특별초성 활용하기!
             
             const toast = document.createElement('div');
             toast.className = 'toast-message';
-            // 🆕 생명권 획득 시 하트 색상을 #6bff6b로 변경
             let displayEmoji = emoji;
             if (emoji === '❤️' && document.body.classList.contains('turn-mode')) {
                 displayEmoji = `<span style="color: #6bff6b; filter: hue-rotate(120deg) saturate(1.5) brightness(1.2);">${emoji}</span>`;
@@ -4895,20 +4874,15 @@ Tip) 세글자 이상 + 특별초성 활용하기!
             }, 2000);
         }
 
-        // 별똥별 초성 배경 생성 함수
         function createFallingConsonants() {
-            // 앱(Play Store)에서는 배경 애니메이션 사용 안 함 (요청사항)
             try {
                 if (isNativeApp) return;
             } catch (e) {}
-            // 기존 컨테이너와 별똥별 제거
             const oldContainer = document.querySelector('.falling-bg');
             if (oldContainer) oldContainer.remove();
             
-            // 모바일에서만 생성
             if (!gameState.isMobile) return;
             
-            // 별똥별 배경 컨테이너 생성
             const container = document.createElement('div');
             container.className = 'falling-bg';
             document.body.appendChild(container);
@@ -4916,7 +4890,6 @@ Tip) 세글자 이상 + 특별초성 활용하기!
             const consonants = ['ㄱ', 'ㄴ', 'ㄷ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅅ', 'ㅇ', 'ㅈ', 'ㅎ'];
             const specialConsonants = ['ㄲ', 'ㄸ', 'ㅃ', 'ㅆ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ'];
             
-            // 일반 초성 12개
             for (let i = 0; i < 12; i++) {
                 const star = document.createElement('div');
                 star.className = 'consonant-star';
@@ -4927,7 +4900,6 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                 container.appendChild(star);
             }
             
-            // 특수 초성 4개
             for (let i = 0; i < 4; i++) {
                 const star = document.createElement('div');
                 star.className = 'consonant-star special';
@@ -4939,7 +4911,6 @@ Tip) 세글자 이상 + 특별초성 활용하기!
             }
         }
 
-        // 🆕 특별초성 체크 함수
         function hasSpecialConsonant(word, currentChars) {
             const SPECIAL_CONSONANTS = ['ㄲ', 'ㄸ', 'ㅃ', 'ㅆ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ'];
             const wordChosung = getChosung(word);
@@ -4947,26 +4918,23 @@ Tip) 세글자 이상 + 특별초성 활용하기!
                    currentChars.some(ch => SPECIAL_CONSONANTS.includes(ch));
         }
 
-async function checkWord() {
+        async function checkWord() {
             const input = document.getElementById('wordInput');
             let word = input.value.trim();
             if (!word) return;
 
-            // 디버그(모바일): checkWord가 실제로 실행되는지 확인
             try {
                 if (gameState.isMobile) {
                     window.__ck_lastCheckWordAt = Date.now();
                 }
             } catch (e) {}
 
-            // 🆕 턴제 모드에서 채팅 처리 (연습 모드일 때는 무시하고 혼자 생존으로 진행!)
             if (multiplayerState.isMultiplayer && gameState.gameRunning && multiplayerState.gameMode === 'turn' && !gameState.isWarmup) {
                 const lastRoomData = multiplayerState.lastRoomData;
                 if (lastRoomData) {
                     const isEliminated = lastRoomData.eliminatedPlayers?.includes(multiplayerState.playerId) || false;
                     const isMyTurn = lastRoomData.currentTurnPlayerId === multiplayerState.playerId;
                     
-                    // 1. 탈락자는 모든 입력을 채팅으로 처리 ("/" 없이도 가능)
                     if (isEliminated) {
                         if (word.trim()) {
                             await sendChatMessageFromInput(word.trim());
@@ -4975,7 +4943,6 @@ async function checkWord() {
                         return;
                     }
                     
-                    // 2. 자신의 턴이 아닐 때: "/" 없이 입력하면 무시, "/"로 시작하면 채팅
                     if (!isMyTurn) {
                         if (word.startsWith('/')) {
                             const chatMessage = word.substring(1).trim();
@@ -4985,7 +4952,6 @@ async function checkWord() {
                             input.value = '';
                             return;
                         } else {
-                            // "/" 없이 입력하면 무시 (정답으로 처리하지 않음)
                             input.value = '';
                             return;
                         }
@@ -4993,18 +4959,15 @@ async function checkWord() {
                 }
             }
             
-            // 🆕 기존: "/" 로 시작하면 채팅 메시지 (시간제 모드 또는 턴제에서 자신의 턴일 때)
             if (multiplayerState.isMultiplayer && word.startsWith('/')) {
-                const chatMessage = word.substring(1).trim(); // "/" 제거, 띄어쓰기는 유지
+                const chatMessage = word.substring(1).trim(); 
                 if (chatMessage) {
-                    // 채팅 메시지 전송 (서버로)
                     await sendChatMessageFromInput(chatMessage);
                 }
                 input.value = '';
                 return;
             }
 
-            // 점수 계산용: 모든 띄어쓰기 제거 (중간 띄어쓰기도 제거)
             const wordForGame = word.replace(/\s+/g, '');
             if (!wordForGame) {
                 input.value = '';
@@ -5014,7 +4977,6 @@ async function checkWord() {
             const wordChosung = getChosung(wordForGame);
             const currentChars = gameState.currentConsonants.map(c => c.char);
 
-            // 띄어쓰기 제거 후 길이 체크
             if (wordForGame.length < 2 || wordForGame.length > 6) {
                 if (gameState.isMobile) {
                     showScoreToast('😓', '2~6글자만 가능해요', 0);
@@ -5038,7 +5000,6 @@ async function checkWord() {
                 return;
             }
 
-            // 띄어쓰기 제거한 단어로 중복 체크
             if (gameState.usedWords && gameState.usedWords.includes(wordForGame)) {
                 if (gameState.isMobile) {
                     showScoreToast('😓', '이미 사용한 단어예요', 0);
@@ -5051,9 +5012,7 @@ async function checkWord() {
             }
 
             try {
-                // 🆕 턴제 모드: 현재 턴인지 확인
                 if (multiplayerState.isMultiplayer && multiplayerState.gameMode === 'turn') {
-                    // 중복 단어 체크 (클라이언트 측)
                     const wordLower = wordForGame.toLowerCase();
                     const isDuplicate = multiplayerState.usedWords && multiplayerState.usedWords.some(w => {
                         const wordStr = typeof w === 'string' ? w : w.word;
