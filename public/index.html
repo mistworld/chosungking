@@ -6723,7 +6723,7 @@ if (soloBtn) soloBtn.textContent = '혼자하기';
             }
         }
 
-        function joinOngoingGame(roomData) {
+function joinOngoingGame(roomData) {
             console.log('[입장] 게임 참여 시도:', {
                 gameStarted: roomData.gameStarted,
                 hasConsonants: !!roomData.consonants,
@@ -6733,55 +6733,31 @@ if (soloBtn) soloBtn.textContent = '혼자하기';
                 gameMode: roomData.gameMode
             });
             
-            // 게임 모드 저장
             multiplayerState.gameMode = roomData.gameMode || 'time';
             if (Array.isArray(roomData.players)) {
                 multiplayerState.players = roomData.players;
             }
             
-            // 턴제 모드일 때 body에 클래스 추가
             updateGameModeUI(multiplayerState.gameMode);
 
-            // 게임이 종료된 방 체크
-            // 시간제: 종료 후에도 대기실로 입장 허용 (제3자 합류 가능)
-            // 턴제: 기존 정책 유지
             if (roomData.endTime) {
                 if (roomData.gameMode === 'turn') {
                     if (roomData.gameStarted || (roomData.consonants && roomData.consonants.length > 0)) {
-                        console.log('[입장] ❌ 게임이 이미 종료된 방입니다 (튕김) - 조건:', {
-                            endTime: roomData.endTime,
-                            gameStarted: roomData.gameStarted,
-                            hasConsonants: !!roomData.consonants,
-                            consonantsLength: roomData.consonants?.length || 0
-                        });
                         leaveRoom();
                         return;
                     }
                 }
             }
             
-            // 🚀 게임 종료 후 대기실 상태면 대기실로 입장
             if (roomData.endTime && !roomData.gameStarted && (!roomData.consonants || roomData.consonants.length === 0)) {
-                console.log('[입장] ✅ 게임 종료된 방 - 대기실 상태로 입장 (튕기지 않음)', {
-                    endTime: roomData.endTime,
-                    gameStarted: roomData.gameStarted,
-                    hasConsonants: !!roomData.consonants,
-                    consonantsLength: roomData.consonants?.length || 0,
-                    playersCount: roomData.players?.length || 0
-                });
-                // 대기실 화면 표시
                 document.getElementById('gameScreen').classList.add('hidden');
                 document.getElementById('gameStartSection').classList.remove('hidden');
                 
-                // 슬롯 표시
                 updateScoreboard(roomData);
                 updateStartScreenButtons();
                 
-                // 🎯 턴제: 버튼 변경 (게임 시작 + 나가기)
                 if (roomData.gameMode === 'turn') {
-                    // 채팅창 표시
                     document.getElementById('chatContainer')?.classList.remove('hidden');
-                    
                     setTimeout(() => {
                         const buttonsContainer = document.getElementById('gameModeButtons');
                         if (!buttonsContainer) return;
@@ -6808,72 +6784,46 @@ if (soloBtn) soloBtn.textContent = '혼자하기';
                     }, 100);
                 }
                 
-                // 폴링 시작
-                console.log('[입장] 대기실 상태 - startPolling() 호출');
                 startPolling();
-                console.log('[입장] 대기실 상태 - startPolling() 호출 완료, return');
-                return; // ✅ 튕기지 않음
+                return; 
             }
 
-            // 게임이 시작되었고 초성이 있으면 관전자 모드 (다음 라운드부터 참여)
             if (roomData.gameStarted === true && 
                 roomData.consonants && 
                 Array.isArray(roomData.consonants) && 
                 roomData.consonants.length > 0) {
                 
-                // 🚀 게임 중 입장은 관전자 모드 (턴 받지 않음)
-                console.log('[입장] 👁️ 게임 진행 중 - 관전자 모드');
-                
-                // 게임 화면 숨기고 대기실 상태 유지
                 document.getElementById('gameScreen').classList.add('hidden');
                 document.getElementById('gameStartSection').classList.remove('hidden');
                 
-                // 채팅창과 슬롯은 표시
                 document.getElementById('playerSlotsLeft')?.classList.remove('hidden');
                 document.getElementById('chatContainer')?.classList.remove('hidden');
                 
-                // 🆕 슬롯 즉시 업데이트 (제3자가 슬롯에 표시되도록)
                 updateScoreboard(roomData);
                 
-                // 관전자에게 나가기 버튼 표시
                 const turnModeLeaveBtn = document.getElementById('turnModeLeaveBtn');
                 if (turnModeLeaveBtn && roomData.gameMode === 'turn') {
                     turnModeLeaveBtn.classList.remove('hidden');
                     turnModeLeaveBtn.style.display = 'block';
                 }
                 
-                // 폴링 시작 (다음 라운드 시작 감지용)
                 startPolling();
             } else {
-                // 게임 대기 중
-                console.log('[입장] ⏳ 게임 대기 중');
                 multiplayerState.lastPlayerCount = roomData.players ? roomData.players.length : 0;
                 
-                // 🆕 대기실 화면 표시 (게임 화면 숨기고 시작 화면 표시)
                 document.getElementById('gameScreen').classList.add('hidden');
                 document.getElementById('gameStartSection').classList.remove('hidden');
                 
-                // 🆕 입장 시 즉시 슬롯 표시 (폴링 시작 전에도)
                 updateScoreboard(roomData);
                 
-                // 🎯 턴제 방 입장 시 항상 게임 시작 대기실 UI (처음 방 + 종료 모달 모두)
                 if (roomData.gameMode === 'turn') {
-                    console.log('[입장] 턴제 방 입장 - 게임 시작 대기 UI');
-                    
-                    // 채팅창 표시
                     document.getElementById('chatContainer')?.classList.remove('hidden');
-                    
-                    // 버튼 텍스트 및 기능 변경 (약간의 지연을 두어 DOM 렌더링 후 실행)
                     setTimeout(() => {
                         const buttonsContainer = document.getElementById('gameModeButtons');
                         if (!buttonsContainer) return;
-                        
-                        // 🎯 방장 여부 확인
                         const isHost = roomData.players && roomData.players.length > 0 && 
                                      roomData.players[0].id === multiplayerState.playerId;
-                        
                         if (isHost) {
-                            // 방장: 게임 시작 + 나가기
                             buttonsContainer.innerHTML = `
                                 <button class="mode-start-btn solo" onclick="sendGameStart(true)">
                                     🎮 게임 시작
@@ -6883,7 +6833,6 @@ if (soloBtn) soloBtn.textContent = '혼자하기';
                                 </button>
                             `;
                         } else {
-                            // 비방장: 나가기만 (중앙 정렬)
                             buttonsContainer.innerHTML = `
                                 <button class="mode-start-btn together" onclick="leaveRoom()" style="margin: 0 auto;">
                                     🚪 나가기
@@ -6893,16 +6842,15 @@ if (soloBtn) soloBtn.textContent = '혼자하기';
                     }, 100);
                 }
                 
-startPolling();
+                startPolling();
                 updateStartScreenButtons();
-                // showToast('게임 시작을 기다리는 중...'); // 제거
-
+                
                 // 🆕 대기실에 방장 혼자 있다면? 지루하지 않게 바로 비밀 연습 게임 시작!
                 if (roomData.gameMode === 'turn' && multiplayerState.isHost && multiplayerState.lastPlayerCount === 1) {
                     startSoloSurvivalGame(true);
                 }
                 
-                // 🆕 폴링 시작 후 즉시 한 번 더 슬롯 업데이트 (입장자 동기화 보장)
+                setTimeout(() => {
                     if (multiplayerState.isMultiplayer && multiplayerState.roomId) {
                         fetch(`https://api.chosungking.com/api/game-state?roomId=${multiplayerState.roomId}&playerId=${encodeURIComponent(multiplayerState.playerId || '')}`, {
                             cache: 'no-cache'
@@ -6915,309 +6863,9 @@ startPolling();
             }
         }
 
-        // 활성 게임 참여 함수
-        function joinActiveGame(roomData) {
-            // 🆕 종료 모달이 있으면 닫기 (방장이 새 게임 시작 시 참가자 모달 닫기)
-            const resultModal = document.querySelector('.mp-result-modal');
-            if (resultModal) {
-                resultModal.remove();
-                // 🆕 finished 소리 플래그는 리셋하지 않음 (이전 게임 종료 소리가 완전히 끝날 때까지 대기)
-                // gameState.finishedSoundPlaying은 audio.onended에서만 리셋됨
-                console.log('[게임 참여] 종료 모달 제거');
-            }
-            
-            // 🆕 게임 시작 시 점수 메시지 초기화 (단어 입력해주세요 메시지 제거)
-            if (!gameState.isMobile || isPC()) {
-                updateEmoji('🤔', '단어를 입력해주세요', 0);
-            }
-            
-            // 기존 타이머 정리
-            if (gameState.gameTimer) clearInterval(gameState.gameTimer);
-            
-            // 🆕 라운드 번호 설정
-            multiplayerState.currentRound = roomData.roundNumber || 0;
-            console.log(`[게임 참여] 라운드 ${multiplayerState.currentRound}`);
-            
-            // 🆕 게임 모드 저장
-            multiplayerState.gameMode = roomData.gameMode || 'time';
-            console.log(`[게임 참여] 게임 모드: ${multiplayerState.gameMode}`);
-            
-            // 🆕 BGM 교대 재생을 위해 roundCount를 서버 라운드 번호와 동기화
-            // 서버 라운드 번호를 roundCount로 사용 (BGM 교대 재생)
-            gameState.roundCount = roomData.roundNumber || 0;
-            
-            // 게임 상태 설정
-            gameState.gameRunning = true;
-            gameState.currentConsonants = roomData.consonants;
-            gameState.score = 0;
-            gameState.usedWords = [];
-            gameState.wordDefinitions = {}; // 🆕 이전 라운드의 뜻풀이 초기화
-            
-            // 🆕 UI 초기화 (이전 라운드의 잔상 제거)
-            if (!gameState.isMobile) {
-                updateEmoji('🤔', '단어를 입력해주세요', 0);
-                updateDefinition('단어를 입력하면 뜻이 표시됩니다');
-            }
-
-            // 남은 시간 계산
-            if (roomData.startTime) {
-                const serverNowEstimate = multiplayerState.serverTimeOffset
-                    ? (Date.now() - multiplayerState.serverTimeOffset)
-                    : Date.now();
-                const elapsedTime = Math.floor((serverNowEstimate - roomData.startTime) / 1000);
-                gameState.timeLeft = Math.max(1, 180 - elapsedTime);
-                console.log('[입장] 남은 시간:', gameState.timeLeft, '초');
-            } else {
-                gameState.timeLeft = 180;
-            }
-            
-            // 초성 배열 변경 카운터 초기화 (남은 시간에 따라)
-            if (gameState.timeLeft <= 60) {
-                gameState.shuffleCount = 2; // 이미 두 번 변경됨
-            } else if (gameState.timeLeft <= 120) {
-                gameState.shuffleCount = 1; // 한 번 변경됨
-            } else {
-                gameState.shuffleCount = 0; // 아직 변경 안 됨
-            }
-
-            // 화면 전환
-            document.getElementById('gameStartSection').classList.add('hidden');
-            document.getElementById('gameScreen').classList.remove('hidden');
-
-            // 멀티플레이 중이면 새게임 버튼 숨기기
-            const resetBtn = document.querySelector('.reset-btn');
-            if (resetBtn) resetBtn.style.display = 'none';
-            
-            // 🚀 시간제 게임 중: 나가기 버튼 숨김 (비매너 방지)
-            const mpLeaveBtn = document.getElementById('mpLeaveBtn');
-            if (mpLeaveBtn && multiplayerState.gameMode === 'time') {
-                mpLeaveBtn.classList.add('hidden');
-                console.log('[게임 참여] 시간제 모드 - 나가기 버튼 숨김');
-            }
-
-            // UI 업데이트
-            document.getElementById('score').textContent = '0';
-            document.getElementById('timer').textContent = gameState.timeLeft;
-            displayConsonants(gameState.currentConsonants);
-            updateScoreboard(roomData);
-            
-            // 🆕 게임 모드에 따라 UI 전환 (턴모드 관련 코드 유지)
-            const currentGameMode = roomData.gameMode || 'time';
-            multiplayerState.gameMode = currentGameMode;
-            updateGameModeUI(currentGameMode);
-            
-            // 🆕 BGM 재생 (게임 시작 시)
-            if (gameState.bgmEnabled) {
-                playBGM();
-            }
-
-            // 🆕 턴제 모드와 시간제 모드 타이머 분리
-            if (gameState.gameTimer) {
-                clearInterval(gameState.gameTimer);
-            }
-            if (gameState.turnTimer) {
-                clearInterval(gameState.turnTimer);
-            }
-            
-            if (multiplayerState.gameMode === 'turn') {
-                // 턴제 모드: 5초 카운트다운 타이머
-                startTurnModeTimer(roomData);
-                
-                // 🆕 턴제 모드: 60초마다 초성 랜덤 재배열
-                if (gameState.turnShuffleTimer) {
-                    clearInterval(gameState.turnShuffleTimer);
-                }
-                const gameStartTime = roomData.startTime || Date.now();
-                gameState.turnShuffleCount = 0; // 재배열 횟수 추적
-                
-                gameState.turnShuffleTimer = setInterval(() => {
-                    if (!gameState.gameRunning) {
-                        clearInterval(gameState.turnShuffleTimer);
-                        return;
-                    }
-                    
-                    const elapsed = Math.floor((Date.now() - gameStartTime) / 1000);
-                    // 60초마다 재배열 (60초, 120초, 180초...)
-                    if (elapsed > 0 && elapsed % 60 === 0 && elapsed / 60 > gameState.turnShuffleCount) {
-                        gameState.turnShuffleCount = elapsed / 60;
-                        shuffleConsonants('random');
-                        console.log(`[턴제] ${elapsed}초 경과 - 초성 랜덤 재배열`);
-                    }
-                }, 1000); // 1초마다 체크
-            } else {
-                // 시간제 모드: 기존 180초 타이머
-                gameState.gameTimer = setInterval(() => {
-                    // 게임이 진행 중일 때만 시간 감소
-                    if (!gameState.gameRunning) {
-                        return;
-                    }
-                    
-                    gameState.timeLeft--;
-                    document.getElementById('timer').textContent = gameState.timeLeft;
-                    
-                    // 멀티플레이어: 초성 배열 변경 체크
-                    if (gameState.timeLeft <= 120 && gameState.shuffleCount === 0) {
-                        shuffleConsonants('reverse');
-                        gameState.shuffleCount = 1;
-                    } else if (gameState.timeLeft <= 60 && gameState.shuffleCount === 1) {
-                        shuffleConsonants('random');
-                        gameState.shuffleCount = 2;
-                    }
-                    
-                    if (gameState.timeLeft === 10) {
-                        document.body.classList.add('time-warning');
-                        if (gameState.sfxEnabled) playTickSound();
-                        if (bgmAudio && gameState.bgmEnabled) fadeOutBGM();  // 🆕 BGM 페이드아웃
-                    }
-                    
-                    if (gameState.timeLeft <= 0) {
-                        clearInterval(gameState.gameTimer);
-                        gameState.gameRunning = false;
-                        endGame();
-                    }
-                }, 1000);
-            }
-
-            startPolling();
-            // showToast('🎮 게임에 참여했습니다!'); // 제거
-            
-            // 🆕 BGM 재생 (멀티플레이도!)
-            if (gameState.bgmEnabled) playBGM();
-            
-            const input = document.getElementById('wordInput');
-            input.value = '';
-            setTimeout(() => input.focus(), 300);
-        }
-
-        function showNameModal() {
-            const modal = document.getElementById('mpNameModal');
-            const input = document.getElementById('mpNameInput');
-            const messageEl = document.getElementById('mpNameMessage');
-            
-            // 이름 변경인 경우 현재 이름 표시, 방 입장인 경우 빈 값
-            if (multiplayerState.pendingRoomId === 'CHANGE_NAME') {
-                const currentName = localStorage.getItem('playerName');
-                input.value = currentName || '';
-                // 🚀 이름 변경 모드: 7일 제한 체크 (localStorage에 이름이 있을 때만)
-                if (currentName) {
-                    const lastChange = localStorage.getItem('playerNameLastChange');
-                    if (lastChange) {
-                        const daysSinceChange = (Date.now() - parseInt(lastChange)) / (1000 * 60 * 60 * 24);
-                        if (daysSinceChange < 7) {
-                            const daysLeft = Math.ceil(7 - daysSinceChange);
-                            messageEl.textContent = `닉네임은 ${daysLeft}일 후에 변경할 수 있습니다.`;
-                            messageEl.className = 'mp-name-message info';
-                            messageEl.style.display = 'block';
-                        } else {
-                            messageEl.style.display = 'none';
-                        }
-                    } else {
-                        messageEl.style.display = 'none';
-                    }
-                } else {
-                    // 🚀 localStorage에 이름이 없으면 (시크릿 모드 등) 처음 입력으로 처리
-                    messageEl.style.display = 'none';
-                }
-            } else {
-                // 🚀 처음 입력 모드: 1주일 제한 안내 메시지 표시
-                input.value = '';
-                const hasExistingName = localStorage.getItem('playerName');
-                if (!hasExistingName) {
-                    messageEl.textContent = '설정한 닉네임은 1주일 동안 변경할 수 없습니다.';
-                    messageEl.className = 'mp-name-message info';
-                    messageEl.style.display = 'block';
-                } else {
-                    messageEl.style.display = 'none';
-                }
-            }
-            modal.classList.remove('hidden');
-            input.focus();
-        }
-        
-        // 🚀 모달 메시지 표시 헬퍼 함수
-        function showNameModalMessage(text, type = 'info') {
-            const messageEl = document.getElementById('mpNameMessage');
-            messageEl.textContent = text;
-            messageEl.className = `mp-name-message ${type}`;
-            messageEl.style.display = 'block';
-        }
-        
-        function hideNameModalMessage() {
-            const messageEl = document.getElementById('mpNameMessage');
-            messageEl.style.display = 'none';
-        }
-
-        function confirmName() {
-            const input = document.getElementById('mpNameInput');
-            const name = input.value.trim();
-            if (!name) {
-                showNameModalMessage('⚠️ 이름을 입력해주세요', 'error');
-                input.focus(); // 입력 필드에 포커스 유지
-                return;
-            }
-            
-            // 이름 변경인 경우 (방 입장이 아닌 경우)
-            if (multiplayerState.pendingRoomId === 'CHANGE_NAME') {
-                // 🚀 7일 제한 체크 (localStorage에 playerName이 있을 때만 체크)
-                const existingName = localStorage.getItem('playerName');
-                if (existingName) {
-                    const lastChange = localStorage.getItem('playerNameLastChange');
-                    if (lastChange) {
-                        const daysSinceChange = (Date.now() - parseInt(lastChange)) / (1000 * 60 * 60 * 24);
-                        if (daysSinceChange < 7) {
-                            const daysLeft = Math.ceil(7 - daysSinceChange);
-                            showNameModalMessage(`닉네임은 ${daysLeft}일 후에 변경할 수 있습니다.`, 'error');
-                            input.focus();
-                            return;
-                        }
-                    }
-                }
-                // 🚀 localStorage에 이름이 없으면 (시크릿 모드 등) 처음 입력으로 처리
-                
-                // 7일 경과했거나 처음 변경하는 경우
-                localStorage.setItem('playerName', name);
-                localStorage.setItem('playerNameLastChange', Date.now().toString());
-                multiplayerState.playerName = name;
-                document.getElementById('mpNameModal').classList.add('hidden');
-                hideNameModalMessage();
-                showToast('이름이 변경되었습니다');
-                multiplayerState.pendingRoomId = null;
-                return;
-            }
-            
-            // 방 입장을 위한 이름 입력
-            const hasExistingName = localStorage.getItem('playerName');
-            localStorage.setItem('playerName', name);
-            // 🚀 처음 이름 설정 시 변경 시간 저장
-            if (!hasExistingName) {
-                localStorage.setItem('playerNameLastChange', Date.now().toString());
-            }
-            multiplayerState.playerName = name;
-            document.getElementById('mpNameModal').classList.add('hidden');
-            hideNameModalMessage();
-            if (multiplayerState.pendingRoomId === 'CREATE_NEW') {
-                // 🆕 방 제목과 게임 모드가 있으면 함께 전달
-                const roomTitle = multiplayerState.pendingRoomTitle || null;
-                const gameMode = multiplayerState.pendingGameMode || 'time';
-                createRoomAndStart(name, roomTitle, gameMode);
-                multiplayerState.pendingRoomTitle = null;
-                multiplayerState.pendingGameMode = null;
-            } else if (multiplayerState.pendingRoomId) {
-                joinRoomWithName(multiplayerState.pendingRoomId, name);
-            }
-            multiplayerState.pendingRoomId = null;
-        }
-
-        function cancelName() {
-            document.getElementById('mpNameModal').classList.add('hidden');
-            hideNameModalMessage(); // 🚀 메시지 숨기기
-            multiplayerState.pendingRoomId = null;
-        }
-
         function startPolling() {
             if (multiplayerState.pollingInterval) clearInterval(multiplayerState.pollingInterval);
             
-            // 🆕 에러 카운터 초기화
             if (!multiplayerState.pollingErrorCount) {
                 multiplayerState.pollingErrorCount = 0;
             }
@@ -7226,31 +6874,23 @@ startPolling();
                 if (!multiplayerState.isMultiplayer || !multiplayerState.roomId) return;
                 
                 try {
-                    // 🆕 타임아웃 설정 (5초로 증가) - 네트워크 지연 대응
                     const controller = new AbortController();
                     const timeoutId = setTimeout(() => controller.abort(), 5000);
                     
                     const response = await fetch(`https://api.chosungking.com/api/game-state?roomId=${multiplayerState.roomId}&playerId=${encodeURIComponent(multiplayerState.playerId || '')}`, {
                         signal: controller.signal,
-                        cache: 'no-cache' // 🆕 캐시 방지로 최신 데이터 보장
+                        cache: 'no-cache' 
                     });
                     
                     clearTimeout(timeoutId);
                     
                     if (!response.ok) {
-                        // 🆕 404 에러: 방이 삭제됨 (턴제: 슬롯 1명만 남았을 때, 시간제: 모든 플레이어 나갔을 때)
                         if (response.status === 404) {
-                            if (DEBUG_POLLING) console.log('[폴링] 방이 삭제됨 - 시작 화면으로 이동');
-
-                            // 종료 모달 제거
                             document.querySelector('.mp-result-modal')?.remove();
-
-                            // 🚀 턴제만 메시지 표시 (시간제는 1명만 있어도 게임 가능)
                             if (multiplayerState.gameMode === 'turn') {
-                                showToast('다른 플레이어가 없어 시작 화면으로 이동합니다', 3000);
+                                if (gameState.isMobile) showScoreToast('🚪', '다른 플레이어가 없어 시작 화면으로 이동합니다', 0);
+                                else showTurnModeToast('🚪', '다른 플레이어가 없어 시작 화면으로 이동합니다');
                             }
-
-                            // 메인 화면으로 이동
                             leaveRoom();
                             return;
                         }
@@ -7259,8 +6899,6 @@ startPolling();
                     
                     const roomData = await response.json();
 
-                    // 🆕 방장 상태는 매 폴링마다 서버 players[0] 기준으로 동기화 (시간제 안정화)
-                    // 기존 로직은 '퇴장' 이벤트에서만 host 변경을 감지해서, 일부 상황에서 방장이 아닌 것으로 표시될 수 있음
                     if (roomData && Array.isArray(roomData.players) && roomData.players.length > 0 && multiplayerState.playerId) {
                         const serverHostId = roomData.players[0]?.id;
                         if (serverHostId) {
@@ -7288,21 +6926,16 @@ startPolling();
                         }
                     }
                     
-                    // 최신 roomData 저장 (checkWord에서 탈락자 체크용)
                     multiplayerState.lastRoomData = roomData;
-
                     multiplayerState.gameMode = roomData.gameMode || multiplayerState.gameMode || 'time';
                     await pollChatMessages();
 
-                    // 항상 players/scores/playerWords 동기화 (시간제에서도 점수 즉시 반영 시 players 1명으로 굳는 현상 방지)
-                    // players가 일시적으로 누락(undefined)되는 순간이 있어, 이 때 []로 덮어쓰면 재입장/방장/슬롯이 흔들림
                     if (Array.isArray(roomData.players)) {
                         multiplayerState.players = roomData.players;
                     }
                     multiplayerState.scores = roomData.scores || {};
                     multiplayerState.playerWords = roomData.playerWords || {};
                     
-                    // 시간 동기화: 서버 시간과 클라이언트 시간의 차이 계산
                     if (roomData.serverNow) {
                         const newOffset = Date.now() - roomData.serverNow;
                         if (multiplayerState.serverTimeOffset === 0) {
@@ -7314,116 +6947,76 @@ startPolling();
                         }
                     }
                     
-                    // 성공 시 에러 카운터 리셋
                     multiplayerState.pollingErrorCount = 0;
                     
-                    // 라운드 번호 기반 상태 체크
                     const serverRound = roomData.roundNumber || 0;
                     const clientRound = multiplayerState.currentRound;
                     
-                    // 1. 게임 종료 감지 (같은 라운드이고 endTime 있음)
                     if (roomData.endTime && serverRound === clientRound && !document.querySelector('.mp-result-modal')) {
-                        console.log(` 게임 종료 감지! (라운드 ${serverRound})`);
-                        
-                        // 게임 종료 시 타이머 정지
                         if (gameState.turnTimer) {
                             clearInterval(gameState.turnTimer);
                             gameState.turnTimer = null;
                         }
                         
-                        // 탈락자 전용 나가기 버튼 제거 (모든 유저에게 나가기 버튼 표시됨)
                         const turnModeLeaveBtn = document.getElementById('turnModeLeaveBtn');
                         if (turnModeLeaveBtn) {
                             turnModeLeaveBtn.classList.add('hidden');
                             turnModeLeaveBtn.style.display = 'none';
                         }
                         
-                        // 게임 화면 숨기기
                         document.getElementById('gameScreen').classList.add('hidden');
                         document.getElementById('gameStartSection').classList.remove('hidden');
                         
-                        // 플레이어 이탈로 인한 종료인지 확인
                         if (roomData.gameEndedReason === 'player_left') {
-                            // 플레이어 이탈 메시지 표시
                             showPlayerLeftMessage();
                             return;
                         }
                         
-                        // 일반 게임 종료 (결과 화면 표시)
                         showFinalResults(roomData);
                         return;
                     }
                     
-                    // 2. 새 게임 시작 감지 (라운드 번호가 증가함)
                     if (serverRound > clientRound && roomData.gameStarted && roomData.consonants) {
-                        console.log(` 새 라운드 시작! (${clientRound} → ${serverRound})`);
-                        
-                        // 결과 화면 닫기
                         document.querySelector('.mp-result-modal')?.remove();
-                        // finished 소리 플래그는 리셋하지 않음 (이전 게임 종료 소리가 완전히 끝날 때까지 대기)
-                        
-                        // 라운드 번호 및 점수 팝업 상태 업데이트
                         multiplayerState.currentRound = serverRound;
                         multiplayerState.previousWordCounts = {};
-                        
-                        // 게임 참여
                         joinActiveGame(roomData);
                         return;
                     }
                     
-                    // 게임 중 입장 시 관전자 모드로 처리 (자동 참여 안 함)
-                    // 게임이 시작되었고, 초성이 있고, 게임이 종료되지 않았고, 아직 게임에 참여하지 않았으면
                     if (roomData.gameStarted && 
                         roomData.consonants && 
                         Array.isArray(roomData.consonants) && 
                         roomData.consonants.length > 0 &&
                         !roomData.endTime &&
-                        !gameState.gameRunning) { // 게임이 실행 중이 아니면 (아직 참여 안 함)
+                        !gameState.gameRunning) {
                         
-                        // 게임 중 입장한 사람은 무조건 관전만 (다음 라운드부터 참여)
-                        // gameState.gameRunning이 false이고 게임이 시작되어 있으면 게임 중 입장
-                        // 이 경우 무조건 관전자로 처리
-                        
-                        // 관전자 모드: 게임에 참여하지 않고 관전만
-                        console.log(` [관전자 모드] 게임 진행 중 관전 (라운드 ${serverRound})`);
-                        
-                        // 게임 화면 숨기고 대기실 상태 유지
                         document.getElementById('gameScreen').classList.add('hidden');
                         document.getElementById('gameStartSection').classList.remove('hidden');
                         
-                        // 채팅창과 슬롯은 표시
                         document.getElementById('playerSlotsLeft')?.classList.remove('hidden');
                         document.getElementById('chatContainer')?.classList.remove('hidden');
                         
-                        // 슬롯 즉시 업데이트 (제3자가 슬롯에 표시되도록)
                         updateScoreboard(roomData);
                         
-                        // 관전자에게 나가기 버튼 표시
                         const turnModeLeaveBtn = document.getElementById('turnModeLeaveBtn');
                         if (turnModeLeaveBtn) {
                             turnModeLeaveBtn.classList.remove('hidden');
                             turnModeLeaveBtn.style.display = 'block';
                         }
-                        
-                        // 다음 라운드부터 자동 참여는 라운드 시작 감지에서 처리됨
                         return;
                     }
                     
-                    // 플레이어 수 변경 감지 및 방장 변경 체크
                     if (roomData.players && roomData.players.length !== multiplayerState.lastPlayerCount) {
                         const previousCount = multiplayerState.lastPlayerCount;
                         const currentCount = roomData.players.length;
                         
-if (currentCount > previousCount) {
-                            // 플레이어 입장
-                            const newPlayer = roomData.players[currentCount - 1];
-                            
+                        if (currentCount > previousCount) {
                             // ⚔️ 난입 시스템: 연습 모드 중에 누군가 들어오면 즉시 본 게임 강제 시작!
                             if (gameState.isWarmup && currentCount >= 2) {
                                 gameState.isWarmup = false; // 연습 끝!
                                 if (gameState.turnTimer) clearInterval(gameState.turnTimer);
                                 
-                                // 모바일/PC 상관없이 토스트 띄우기
                                 if (gameState.isMobile) {
                                     showScoreToast('⚔️', '도전자 입장! 본 게임을 시작합니다.', 0);
                                 } else {
@@ -7432,34 +7025,24 @@ if (currentCount > previousCount) {
                                 
                                 sendGameStart(true); // 서버에 찐 멀티 1라운드 시작 신호 발사!
                             }
-                            // (앱 전용: 멀티 입장 효과음 제거)
                         } else if (currentCount < previousCount) {
-                            // 플레이어 퇴장
-                            // (앱 전용: 멀티 퇴장 효과음 제거)
-                            
-                            // 방장 변경 체크: 첫 번째 플레이어가 방장
                             const newHostId = roomData.players.length > 0 ? roomData.players[0].id : null;
                             let hostChanged = false;
 
                             if (newHostId && newHostId === multiplayerState.playerId && !multiplayerState.isHost) {
-                                // 내가 새 방장이 됨
                                 multiplayerState.isHost = true;
                                 hostChanged = true;
-                                // showToast(' 방장이 되었습니다!'); // 제거
                             } else if (multiplayerState.isHost && newHostId !== multiplayerState.playerId) {
-                                // 내가 방장이었는데 다른 사람이 방장이 됨 (이론적으로는 발생하지 않아야 함)
                                 multiplayerState.isHost = false;
                                 hostChanged = true;
                             }
 
                             if (hostChanged) {
-                                // 방장 변경 시 대기실 버튼/안내 즉시 갱신
                                 updateStartScreenButtons();
                                 if (roomData.gameMode === 'turn') {
                                     updateGameModeUI('turn');
                                 }
                                 
-                                // 결과 모달이 열려있으면 버튼도 업데이트
                                 const resultModal = document.querySelector('.mp-result-modal');
                                 if (resultModal) {
                                     const buttonsContainer = resultModal.querySelector('.mp-result-buttons');
@@ -7478,23 +7061,16 @@ if (currentCount > previousCount) {
                         multiplayerState.lastPlayerCount = currentCount;
                     }
                     
-                    // 항상 슬롯 업데이트 (게임 실행 중이어도 플레이어 목록 동기화)
-                    // 플레이어 나가기/입장 시 즉시 반영되도록 매 폴링마다 호출
-                    if (DEBUG_POLLING) console.log('[폴링] 슬롯 업데이트 - players:', roomData.players?.map(p => ({ id: p.id, name: p.name })), '총', roomData.players.length, '명');
                     updateScoreboard(roomData);
                 
-                // 턴제 모드: 턴 전환 감지 및 타이머 업데이트
                 if (roomData.gameMode === 'turn' && gameState.gameRunning) {
                     const currentTurnChanged = roomData.currentTurnPlayerId !== multiplayerState.lastTurnPlayerId;
                     const turnStartTimeChanged = roomData.turnStartTime !== multiplayerState.lastTurnStartTime;
                     
-                    // 턴 전환이 실제로 발생했을 때만 처리 (중복 방지)
                     if (currentTurnChanged || (turnStartTimeChanged && roomData.currentTurnPlayerId)) {
-                        console.log('[턴제] 턴 전환 감지:', roomData.currentTurnPlayerId, '이전:', multiplayerState.lastTurnPlayerId);
                         multiplayerState.lastTurnPlayerId = roomData.currentTurnPlayerId;
                         multiplayerState.lastTurnStartTime = roomData.turnStartTime;
                         
-                        // 타이머 재시작
                         if (gameState.turnTimer) {
                             clearInterval(gameState.turnTimer);
                             gameState.turnTimer = null;
@@ -7502,73 +7078,47 @@ if (currentCount > previousCount) {
                         startTurnModeTimer(roomData);
                     }
                     
-                    // 사용된 단어 영역 업데이트
                     if (roomData.usedWords) {
                         const previousWordsCount = multiplayerState.lastUsedWordsCount || 0;
                         const currentWordsCount = roomData.usedWords.length;
                         
-                        // 누군가 단어를 맞췄는지 감지 (단어 수가 증가했을 때) - 모든 플레이어에게 효과음 공유
                         if (currentWordsCount > previousWordsCount && 
-                            !multiplayerState.justSubmittedWord) { // 자신이 방금 입력한 경우 제외 (중복 방지)
-                            // 누군가 단어를 맞춤 - 효과음 재생 (모두에게 들림)
+                            !multiplayerState.justSubmittedWord) {
                             const newWord = roomData.usedWords[currentWordsCount - 1];
                             if (newWord) {
-                                // 서버에서 전달된 특별초성 정보 사용 (정확한 효과음)
                                 const wordLength = typeof newWord === 'string' ? newWord.length : newWord.length;
                                 const hasSpecial = typeof newWord === 'object' ? newWord.hasSpecial : false;
                                 
                                 let livesEarned = 0;
-                                if (wordLength === 2 && hasSpecial) {
-                                    livesEarned = 1; // 특별초성 2글자 
-                                } else if (wordLength === 2) {
-                                    livesEarned = 0; // 일반 2글자
-                                } else if (wordLength === 3) {
-                                    livesEarned = 1; // 3글자 
-                                } else if (wordLength === 4) {
-                                    livesEarned = 3; // 4글자 
-                                } else if (wordLength >= 5) {
-                                    livesEarned = 5; // 5글자+ 
-                                }
+                                if (wordLength === 2 && hasSpecial) livesEarned = 1; 
+                                else if (wordLength === 2) livesEarned = 0; 
+                                else if (wordLength === 3) livesEarned = 1; 
+                                else if (wordLength === 4) livesEarned = 3; 
+                                else if (wordLength >= 5) livesEarned = 5; 
                                 
-                                // 효과음 재생 (생명권 개수에 따라 정확한 사운드)
-                                if (livesEarned === 1) {
-                                    playScoreSound(100); // 1개 → 100 110 120.mp3
-                                } else if (livesEarned === 3) {
-                                    playScoreSound(400); // 3개 → 400.mp3
-                                } else if (livesEarned === 5) {
-                                    playScoreSound(900); // 5개 → 900.mp3
-                                } else {
-                                    playScoreSound(30); // 생명권 없음 → 30.mp3
-                                }
+                                if (livesEarned === 1) playScoreSound(100); 
+                                else if (livesEarned === 3) playScoreSound(400); 
+                                else if (livesEarned === 5) playScoreSound(900); 
+                                else playScoreSound(30); 
                             }
                         }
                         
-                        // 최근 100개만 저장 (메모리 절약, 서버에서 이미 100개만 보내주지만 안전을 위해 클라이언트에서도 제한)
                         const limitedUsedWords = Array.isArray(roomData.usedWords) 
                             ? roomData.usedWords.slice(-100) 
                             : [];
-                        multiplayerState.usedWords = limitedUsedWords; // 클라이언트에서 중복 체크용 (최근 100개만)
-                        multiplayerState.lastUsedWordsCount = currentWordsCount; // 추적용
-                        updateTurnModeUsedWords(limitedUsedWords); // 최근 100개만 표시
+                        multiplayerState.usedWords = limitedUsedWords;
+                        multiplayerState.lastUsedWordsCount = currentWordsCount;
+                        updateTurnModeUsedWords(limitedUsedWords);
                     }
                     
-                    // 생명권 소진 효과음 재생 (게임 종료 시 정지)
-                    // 게임 종료 시(endTime이 설정되면) 생명권 소진 효과음 재생 안 함
                     if (!roomData.endTime && roomData.playerLives) {
                         const currentLives = roomData.playerLives;
                         const lastLives = multiplayerState.lastPlayerLives || {};
                         
-                        // 각 플레이어의 생명권 변화 확인
                         Object.keys(currentLives).forEach(playerId => {
                             const currentLife = currentLives[playerId] || 0;
                             const lastLife = lastLives[playerId] || 0;
                             
-                            // 생명권이 감소했을 때 (소진)
-                            if (currentLife < lastLife) {
-                                // (앱 전용: 턴제 생명권 효과음 제거)
-                            }
-
-                            // 생명권이 증가했을 때: 해당 유저 슬롯 위에 +1/+3/+5 팝업 표시 (모두에게 보임)
                             if (roomData.gameMode === 'turn' && currentLife > lastLife) {
                                 const gained = currentLife - lastLife;
                                 if (gained > 0) {
@@ -7577,39 +7127,28 @@ if (currentCount > previousCount) {
                             }
                         });
                         
-                        // 이전 상태 저장
                         multiplayerState.lastPlayerLives = { ...currentLives };
                     }
                     
-                    // 슬롯 업데이트 (생명권, 턴 횟수) - 위에서 이미 호출됨, 중복이지만 생명권 변화 즉시 반영을 위해 유지
-                    // updateScoreboard(roomData); // 위 5944줄에서 이미 호출됨 (중복 방지)
-                    
-                    // 나가기 버튼 표시 로직 (탈락자 + 관전자)
                     const turnModeLeaveBtn = document.getElementById('turnModeLeaveBtn');
                     if (turnModeLeaveBtn && roomData.gameMode === 'turn' && roomData.gameStarted && !roomData.endTime) {
                         const isEliminated = roomData.eliminatedPlayers?.includes(multiplayerState.playerId);
-                        // 관전자 체크: playerLives가 undefined인 경우 (게임 참여자가 아님)
-                        // 생명권 0이어도 게임 참여자는 아님 (탈락자는 eliminatedPlayers에 있음)
                         const hasPlayerLives = roomData.playerLives?.[multiplayerState.playerId] !== undefined;
                         const isSpectator = !isEliminated && !hasPlayerLives;
                         
                         if (isEliminated || isSpectator) {
-                            // 탈락자 또는 관전자: 나가기 버튼 표시
                             turnModeLeaveBtn.classList.remove('hidden');
                             turnModeLeaveBtn.style.display = 'block';
                         } else {
-                            // 게임 참여자: 나가기 버튼 숨김
                             turnModeLeaveBtn.classList.add('hidden');
                             turnModeLeaveBtn.style.display = 'none';
                         }
                     }
                     
-                    // 게임 종료 체크 (1명만 남으면)
                     const activePlayers = (roomData.players || []).filter(p => 
                         !roomData.eliminatedPlayers?.includes(p.id)
                     );
                     if (activePlayers.length <= 1 && !roomData.endTime) {
-                        // 서버에 게임 종료 신호 전송 (방장만)
                         if (multiplayerState.isHost) {
                             fetch(`https://api.chosungking.com/api/game-state?roomId=${multiplayerState.roomId}`, {
                                 method: 'POST',
@@ -7619,37 +7158,24 @@ if (currentCount > previousCount) {
                         }
                     }
                 } else if (gameState.gameRunning) {
-                    // 시간제 모드: 기존 로직
-                    // 4. 점수판 업데이트 (항상 업데이트 - 게임 중/대기 중 모두)
                     updateScoreboard(roomData);
                 }
                 
-// 멀티플레이어: 서버 startTime 기준으로 타이머 동기화 (부드러운 보정) - 시간제 모드만
                 if (gameState.gameRunning && roomData.startTime && roomData.gameMode !== 'turn') {
-                    // ▼ 여기 2줄 수정 (시계 오차를 계산해서 완벽하게 동기화) ▼
                     const serverNowEstimate = Date.now() - (multiplayerState.serverTimeOffset || 0);
                     const elapsedTime = Math.floor((serverNowEstimate - roomData.startTime) / 1000);
-                    
                     const serverTimeLeft = Math.max(0, 180 - elapsedTime);
-                    
-                    // 서버 시간과 클라이언트 시간 차이 계산
                     const timeDiff = serverTimeLeft - gameState.timeLeft;
                     
-                    // 차이가 3초 이상이면 즉시 동기화 (큰 오차는 바로 수정)
                     if (Math.abs(timeDiff) >= 3) {
                         gameState.timeLeft = serverTimeLeft;
                         document.getElementById('timer').textContent = serverTimeLeft;
-                    }
-                    // 차이가 1.5초 이상 3초 미만이면 점진적으로 보정 (부드러운 동기화)
-                    else if (Math.abs(timeDiff) >= 1.5) {
-                        // 차이의 20%만 보정하여 급격한 변화 방지
+                    } else if (Math.abs(timeDiff) >= 1.5) {
                         const correction = Math.round(timeDiff * 0.2);
                         gameState.timeLeft = Math.max(0, gameState.timeLeft + correction);
                         document.getElementById('timer').textContent = gameState.timeLeft;
                     }
-                    // 1.5초 미만 차이는 무시 (정상 범위)
                     
-                    // 초성 배열 변경 체크 (서버 시간 기준)
                     if (serverTimeLeft <= 120 && gameState.shuffleCount === 0) {
                         shuffleConsonants('reverse');
                         gameState.shuffleCount = 1;
@@ -7659,41 +7185,28 @@ if (currentCount > previousCount) {
                     }
                 }
                 
-                // 채팅 메시지 동기화 (오른쪽 채팅창에 표시)
                 if (roomData.chatMessages && Array.isArray(roomData.chatMessages)) {
                     updateChatMessages(roomData.chatMessages);
                 }
                 
-                // 게임 종료 체크 (서버 시간 기준)
-                // 게임이 새로 시작되었으면 모달을 띄우지 않음
-                // endTime이 있고, 게임이 시작되지 않았고, 모달이 없을 때만 표시
-                // 추가 조건: 게임이 실행 중이 아닐 때만 (게임 시작 시 재생 방지)
                 if (roomData.endTime && 
                     !roomData.gameStarted && 
                     !roomData.consonants &&
                     !gameState.gameRunning &&
                     !document.querySelector('.mp-result-modal')) {
-                    // 서버에서 게임이 종료되었고, 새 게임이 시작되지 않았고, 모달이 없으면 표시
                     showFinalResults(roomData);
                 }
                 
-                // 게임이 새로 시작되었는데 모달이 있으면 닫기 (중복 방지)
                 if (roomData.gameStarted && 
                     roomData.consonants && 
                     roomData.consonants.length > 0 &&
                     document.querySelector('.mp-result-modal')) {
-                    // 게임이 시작되었는데 모달이 있으면 닫기 (방장이 새 게임 시작 시)
                     document.querySelector('.mp-result-modal')?.remove();
-                    // finished 소리 플래그는 리셋하지 않음 (이전 게임 종료 소리가 완전히 끝날 때까지 대기)
-                    if (DEBUG_POLLING) console.log('[폴링] 게임 시작 감지 - 모달 제거');
                 }
             } catch (error) {
-                // 에러 카운터 증가
                 multiplayerState.pollingErrorCount = (multiplayerState.pollingErrorCount || 0) + 1;
                 
-                // 네트워크 오류나 타임아웃은 로그만 남기고 계속 시도
                 if (error.name === 'AbortError' || error.name === 'TypeError') {
-                    // 조용히 재시도 (너무 많은 로그 방지)
                     if (multiplayerState.pollingErrorCount % 10 === 0) {
                         console.warn(`[폴링] 네트워크 오류 (${multiplayerState.pollingErrorCount}회)`);
                     }
@@ -7701,12 +7214,8 @@ if (currentCount > previousCount) {
                     console.error('[폴링] 에러:', error);
                 }
                 
-                // 연속 에러가 20회 이상이면 폴링 간격을 늘림 (500ms → 1.5초)
-                // 너무 자주 실패하면 서버 부하를 줄이기 위해
                 if (multiplayerState.pollingErrorCount >= 20 && multiplayerState.pollingErrorCount < 21) {
-                    console.warn('[폴링] 연속 에러 발생, 폴링 간격 조정 (500ms → 1.5초)');
                     clearInterval(multiplayerState.pollingInterval);
-                    // 1.5초 간격으로 재시작
                     multiplayerState.pollingInterval = setInterval(async () => {
                         if (!multiplayerState.isMultiplayer || !multiplayerState.roomId) return;
                         try {
@@ -7719,12 +7228,10 @@ if (currentCount > previousCount) {
                             clearTimeout(timeoutId);
                             if (retryResponse.ok) {
                                 const retryData = await retryResponse.json();
-                                // 성공하면 에러 카운터 리셋하고 정상 간격으로 복구
                                 multiplayerState.pollingErrorCount = 0;
-                                startPolling(); // 정상 간격(500ms)으로 복구
+                                startPolling(); 
                             }
                         } catch (retryError) {
-                            // 재시도 실패는 무시 (다음 주기에서 다시 시도)
                         }
                     }, 2000);
                 }
